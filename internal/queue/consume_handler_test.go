@@ -1,11 +1,31 @@
 package queue
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+type consumeWrappedOffsetStore struct{}
+
+func (consumeWrappedOffsetStore) Append(_ context.Context, _ int, _ Message) (Offset, error) {
+	return 0, nil
+}
+
+func (consumeWrappedOffsetStore) AppendRecord(_ context.Context, _ int, _ Record) error {
+	return nil
+}
+
+func (consumeWrappedOffsetStore) Read(_ context.Context, partitionID int, offset Offset) (Message, error) {
+	return Message{}, fmt.Errorf("partition %d offset %d: %w", partitionID, offset, ErrOffsetNotFound)
+}
+
+func (consumeWrappedOffsetStore) Flush(_ context.Context, _ int) error {
+	return nil
+}
 
 func TestConsumeHandlerRejectsUnsupportedMethod(t *testing.T) {
 	handler := NewConsumeHandler(nil)
@@ -86,6 +106,32 @@ func TestConsumeHandlerReturnsNoContentWhenEmpty(t *testing.T) {
 		&runtimeTestCluster{},
 		PartitionManager{},
 		&runtimeTestStorage{},
+		HashPartitionRouter{},
+		nil,
+	)
+
+	handler := NewConsumeHandler(runtime)
+	req := httptest.NewRequest(http.MethodGet, "/consume?topic=gpu&group=processor", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("expected %d, got %d", http.StatusNoContent, recorder.Code)
+	}
+}
+
+func TestConsumeHandlerReturnsNoContentForWrappedOffsetNotFound(t *testing.T) {
+	nodes := []Node{{ID: "queue-0", Address: "queue-0:9000"}}
+	partitions := []Partition{{
+		ID:       0,
+		Replicas: []Replica{{NodeID: "queue-0", Role: ReplicaLeader}},
+	}}
+
+	runtime := NewRuntime(
+		&runtimeTestCluster{nodes: nodes},
+		*NewPartitionManager(nodes[0], partitions),
+		consumeWrappedOffsetStore{},
 		HashPartitionRouter{},
 		nil,
 	)
