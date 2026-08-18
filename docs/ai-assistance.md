@@ -11,33 +11,53 @@ This project was built with AI assistance, but the direction came from me. I use
 - I used AI to draft and refine queue handlers, streamer logic, processor behavior, Postgres persistence, Helm charts, tests, logging, metrics, CI, and documentation.
 - I also used AI as a fast debugging partner once real runtime feedback was available from Kubernetes, Prometheus, Grafana, logs, and Postgres.
 
-## Representative Prompt Themes
+## Prompt Log
 
-The work happened as a running engineering conversation rather than one-shot generation. Representative prompt themes included:
+The working conversation was long and iterative, so this log keeps the prompts close to what I actually typed while omitting tiny acknowledgements such as `yes please` or simple status replies. The important point is that the implementation direction came from me and AI was used to execute, refine, and debug that direction faster.
 
-- Implement the CSV telemetry streamer against the existing queue `Message` and `Producer` types without inventing a new schema.
-- Create Helm charts for streamer and other components, then adapt deployment from ConfigMap-based CSV delivery to PVC-backed CSV delivery.
-- Add the queue consume path, processor persistence, Prometheus metrics, Grafana dashboards, and a debug pod for quick curl-based inspection.
-- Fix queue HA behavior, leader forwarding, replication quorum handling, readiness behavior, and follower acknowledgement settings.
-- Add structured logging consistently across components.
-- Replace the manually maintained OpenAPI document with generated Swagger and wire it into CI.
-- Improve unit test coverage, including `main.go` entrypoints and queue replication paths.
-- Simplify evaluator-facing docs and automate bring-up and cleanup.
+### Architecture, Repo Bootstrap, and Streamer
 
-## Prompt Log By Phase
+- `Continuing from System Design Architecture: Implement the CSV telemetry streamer in the repository. First inspect the existing queue Message type, Producer interface, config patterns, Makefile, and the uploaded dcgm_metrics CSV at /mnt/data/dcgm_metrics_20250718_134233.csv. Build a simple cmd/streamer and internal/telemetry implementation that reads each CSV row as a telemetry datapoint, replaces its timestamp with processing time, converts it to the existing queue Message without inventing an incompatible schema, and publishes continuously in a loop. Keep the implementation focused and idiomatic. Add unit tests for CSV parsing/replay behavior and run gofmt plus the existing test/build checks. Do not redesign the queue.`
+- `we first need to create helm chart for streamer`
 
-Below is the practical prompt pattern I used through the project. These are summarized from the actual working conversation and grouped by phase so the document stays readable.
+### Queue Consume Path, Collector, and Queue Observability
 
-- Project framing: I first used AI to sanity-check the component split and naming, then anchored on streamer, queue, processor, API, and persistence as the working layout.
-- Streamer implementation: I directed AI to read the uploaded CSV, preserve the row shape, replace the timestamp at processing time, and publish into the existing queue contract instead of inventing a new schema.
-- Deployment model changes: I iterated with AI on how the CSV should be delivered in Kubernetes, first discussing ConfigMap mounting and then switching to the PVC-backed approach that I preferred.
-- Queue behavior: I repeatedly prompted AI to add or refine the queue consume path, acknowledgement flow, stats, Prometheus metrics, and Grafana visibility.
-- Naming and API direction: I steered the terminology discussion around `processor` versus `collector` and later pushed the API toward the evaluator-facing `/api/v1/gpus` and `/api/v1/gpus/{id}/telemetry` shape.
-- Persistence and query path: I directed AI to add Postgres-backed persistence and then refine the API so telemetry could be queried by GPU and time window.
-- Logging and observability: I explicitly asked for a reusable logger module, better log lines, Prometheus metrics, a quick debug pod, and queue dashboard updates.
-- Queue HA and routing: I used AI heavily while debugging multi-replica queue behavior, especially leader forwarding, readiness, replication quorum, and follower acknowledgement handling.
-- Build and delivery workflow: I prompted AI to improve the Makefile, add Podman-based image build and push targets, automate Swagger generation, and later add GitHub Actions coverage and image build automation.
-- Coverage and polish: I used AI to improve test coverage, cover `main.go`, simplify the README, add design diagrams, and convert the API docs into generated Swagger.
+- `yup. lets implement queue consume path`
+- `since we are modifying queue, we should add metrics, so that we can show objects in queue and what not`
+- `lets implement prometheus metrics`
+- `lets add a simple pod so that I can run curl commands in it quickly`
+- `we should add buid&push commands to makefile`
+- `use podman. not docker`
+
+### Persistence, Query Model, and Evaluator-Facing API
+
+- `the api should be able to query the persisted data`
+- `no, not prometheus as primary data store. Just the logic from prometheus to store the data`
+- `before that, lets add some logging. Its better to add it now instead of later rewrite. Lets add a logger module and use it throughout the project`
+- `I see endpoints like: GET /api/v1/gpus, GET /api/v1/gpus/{id}/telemetry, GET /api/v1/gpus/{id}/telemetry?start_time=...&end_time=...`
+
+### HA, Scaling, and Runtime Debugging
+
+- `now, lets deploy prometheus and grafana in the same minikube cluster and build some dashboard so we can visualise queue metrics`
+
+### Tests, Coverage, Swagger, CI, and Docs
+
+- `the swagger generation should be automatic`
+- `lets cleanup old swagger related stuff, old generated json`
+- `coverage is 55.8%`
+- `lets do one thing. Add make show-coverage which runs coverage then go tool cover -html=coverage.out -o coverage.html and then opens that html as well`
+- `lets add mermaid chart for queue arch in docs/design.md. Add colors as well`
+- `The readme is too long. What my plan is, just mention pre-reqs in readme, then use bringup.sh to install all the components and then ask them to open certain URLs like api, grafana etc. A little bit arch overview is fine`
+- `can you take another pass at repo and pdf ? Also, lets add docker push as well in github actions`
+- `no, push the images to dockerhub. not ghcr`
+- `yes, lets add system tests. Mostly target CI env though`
+
+## Bootstrapping By Area
+
+- Project and repo bootstrap: AI was first used to validate component boundaries and then to scaffold the monorepo layout, Helm charts, bring-up flow, and evaluator-facing README around the architecture I chose.
+- Code bootstrap: the biggest initial code-generation prompt was the streamer implementation prompt above, followed by direct prompts to add the processor, queue consume path, Postgres-backed persistence, metrics, logging, and API routes.
+- Unit test bootstrap: test work was also explicitly prompted rather than left implicit. The first implementation prompt already asked for unit tests, and later prompts such as `lets improve coverage now`, `lets cover all main.go?`, and `yes, lets add system tests. Mostly target CI env though` were used to keep increasing coverage and add broader validation.
+- Build environment bootstrap: prompts like `we should add buid&push commands to makefile`, `use podman. not docker`, `the swagger generation should be automatic`, and `can you take another pass at repo and pdf ? Also, lets add docker push as well in github actions` were used to move the repo from a local dev state to a more submission-ready build and CI setup.
 
 ## Where AI Fell Short And Needed Manual Steering
 

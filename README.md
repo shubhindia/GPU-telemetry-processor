@@ -33,7 +33,7 @@ flowchart LR
 ## Prerequisites
 
 - Kubernetes cluster available locally. Minikube works.
-- `kubectl` and `helm` installed and pointed at that cluster.
+- `jq`, `kubectl` and `helm` installed and pointed at that cluster.
 - The repo includes `data/dcgm_metrics_20250718_134233.csv`.
 - Cluster can pull the published images, or you have pushed your own images first.
 
@@ -88,6 +88,20 @@ Then open:
 
 Grafana defaults to `admin:admin` and is preloaded with the `Queue Overview` dashboard.
 Prometheus is installed as Grafana's data source, but direct access is only needed for debugging.
+
+## Sample Workflow
+
+After `./bringup.sh` and the API port-forward are running, this is the quickest end-to-end path to verify the system:
+
+```bash
+curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8080/api/v1/gpus
+
+GPU_ID="$(curl -s http://127.0.0.1:8080/api/v1/gpus | jq -r '.items[0].id')"
+curl "http://127.0.0.1:8080/api/v1/gpus/${GPU_ID}/telemetry?window=15m&limit=10"
+```
+
+That flow confirms the API is healthy, telemetry has been persisted, GPUs are discoverable, and time-windowed telemetry queries are working.
 
 ## API Endpoints
 
