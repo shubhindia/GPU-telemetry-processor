@@ -1,0 +1,17 @@
+queue:
+  data_dir: ./data/queue
+  partitions: 4
+  segment_size_bytes: 67108864
+
+streamer:
+  spool_dir: ./data/streamer-spool
+  max_spool_bytes: 1073741824
+  retry_initial: 1s
+  retry_max: 30s
+
+collector:
+  workers: 2
+
+api:
+  host: 0.0.0.0
+  port: 8080
