@@ -24,6 +24,29 @@ The work happened as a running engineering conversation rather than one-shot gen
 - Improve unit test coverage, including `main.go` entrypoints and queue replication paths.
 - Simplify evaluator-facing docs and automate bring-up and cleanup.
 
+## Prompt Log By Phase
+
+Below is the practical prompt pattern I used through the project. These are summarized from the actual working conversation and grouped by phase so the document stays readable.
+
+- Project framing: I first used AI to sanity-check the component split and naming, then anchored on streamer, queue, processor, API, and persistence as the working layout.
+- Streamer implementation: I directed AI to read the uploaded CSV, preserve the row shape, replace the timestamp at processing time, and publish into the existing queue contract instead of inventing a new schema.
+- Deployment model changes: I iterated with AI on how the CSV should be delivered in Kubernetes, first discussing ConfigMap mounting and then switching to the PVC-backed approach that I preferred.
+- Queue behavior: I repeatedly prompted AI to add or refine the queue consume path, acknowledgement flow, stats, Prometheus metrics, and Grafana visibility.
+- Naming and API direction: I steered the terminology discussion around `processor` versus `collector` and later pushed the API toward the evaluator-facing `/api/v1/gpus` and `/api/v1/gpus/{id}/telemetry` shape.
+- Persistence and query path: I directed AI to add Postgres-backed persistence and then refine the API so telemetry could be queried by GPU and time window.
+- Logging and observability: I explicitly asked for a reusable logger module, better log lines, Prometheus metrics, a quick debug pod, and queue dashboard updates.
+- Queue HA and routing: I used AI heavily while debugging multi-replica queue behavior, especially leader forwarding, readiness, replication quorum, and follower acknowledgement handling.
+- Build and delivery workflow: I prompted AI to improve the Makefile, add Podman-based image build and push targets, automate Swagger generation, and later add GitHub Actions coverage and image build automation.
+- Coverage and polish: I used AI to improve test coverage, cover `main.go`, simplify the README, add design diagrams, and convert the API docs into generated Swagger.
+
+## Where AI Fell Short And Needed Manual Steering
+
+- Some early suggestions were too generic and needed me to pin the implementation back to the assignment wording, especially around naming and schema choices.
+- Kubernetes deployment details often needed multiple rounds because the correct answer depended on live cluster behavior rather than static code review.
+- Queue HA work needed manual steering because failure modes such as quorum errors, readiness problems, and service-to-leader routing only became obvious after deployment.
+- Swagger generation needed manual correction when generated types did not line up cleanly with the runtime models.
+- Coverage and Go toolchain issues needed environment-aware intervention because the failure was caused by local toolchain state, not just missing code.
+
 ## Where AI Helped Most
 
 - Speeding up implementation once the direction was already decided.
@@ -55,7 +78,7 @@ The effective loop for this project was:
 - The initial layout and system intent were written by me.
 - The implementation roadmap was driven by my prompts and constraints.
 - AI helped polish the layout, fill in missing code, accelerate repetitive work, and debug faster once real signals were available.
-- In other words, I used prompt engineering to direct the work; AI increased speed and iteration quality.
+- In other words, I directed the work; AI increased speed and iteration quality.
 
 ## Repo-Level AI Guidance
 
