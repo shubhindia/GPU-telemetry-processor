@@ -9,6 +9,64 @@ This document captures the main design decisions behind the GPU telemetry pipeli
 - Processors act as the assignment's telemetry collectors. They consume from the queue, parse telemetry, and persist samples in Postgres.
 - The API serves filtered telemetry queries from Postgres instead of reading directly from the queue.
 
+## Streamer Architecture
+
+```mermaid
+flowchart LR
+    CSV["CSV File"] --> L["Load Records"]
+    L --> SH["Shard Filter\n(deterministic by replica index)"]
+    SH --> TS["Replace Timestamp\nwith processing time"]
+    TS --> MSG["Queue Message\n(existing topic + routing key shape)"]
+    MSG --> PUB["HTTP Publish"]
+    PUB --> RETRY["Exponential Backoff\non publish failure"]
+    RETRY --> PUB
+    PUB --> Q["Queue Service"]
+    Q --> LOOP["Loop CSV forever"]
+    LOOP --> SH
+
+    classDef source fill:#dbeafe,stroke:#1d4ed8,stroke-width:1.5px,color:#0f172a;
+    classDef transform fill:#dcfce7,stroke:#15803d,stroke-width:1.5px,color:#0f172a;
+    classDef transport fill:#fee2e2,stroke:#dc2626,stroke-width:1.5px,color:#0f172a;
+    classDef queue fill:#fef3c7,stroke:#b45309,stroke-width:1.5px,color:#0f172a;
+
+    class CSV source;
+    class L,SH,TS,MSG,LOOP transform;
+    class PUB,RETRY transport;
+    class Q queue;
+```
+
+- The streamer keeps the CSV schema intact instead of inventing a second telemetry model.
+- The original CSV timestamp is treated as source data only; the emitted telemetry timestamp is the time of processing.
+- Retry with backoff absorbs temporary queue-side failures such as quorum or connectivity issues.
+- Multiple streamer replicas increase throughput through deterministic sharding rather than duplicate replay.
+
+## Processor Architecture
+
+```mermaid
+flowchart LR
+    Q["Queue Leader Partitions"] --> POLL["Poll /consume\nby topic + group"]
+    POLL --> REC["Decode Telemetry Record"]
+    REC --> VAL["Validate + Parse\ntimestamp and numeric value"]
+    VAL --> UPSERT["Upsert Series Metadata"]
+    UPSERT --> INS["Insert Sample"]
+    INS --> ACK["POST /ack"]
+    ACK --> NEXT["Continue Poll Loop"]
+    NEXT --> POLL
+    INS --> PG["Postgres"]
+
+    classDef queue fill:#dbeafe,stroke:#1d4ed8,stroke-width:1.5px,color:#0f172a;
+    classDef runtime fill:#dcfce7,stroke:#15803d,stroke-width:1.5px,color:#0f172a;
+    classDef store fill:#fef3c7,stroke:#b45309,stroke-width:1.5px,color:#0f172a;
+
+    class Q queue;
+    class POLL,REC,VAL,ACK,NEXT runtime;
+    class UPSERT,INS,PG store;
+```
+
+- Processors are consumer-group members and scale horizontally by sharing queue work.
+- Persistence separates series metadata from sample inserts so query shape stays simple and label duplication is reduced.
+- A message is acknowledged only after the telemetry record has been parsed and written successfully.
+
 ## Queue Architecture
 
 ```mermaid

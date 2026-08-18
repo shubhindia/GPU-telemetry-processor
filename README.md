@@ -6,6 +6,7 @@ Distributed GPU telemetry pipeline with a replicated queue, streaming CSV replay
 
 More design detail, including queue internals, is in [docs/design.md](./docs/design.md).
 AI workflow notes for the assignment are in [docs/ai-assistance.md](./docs/ai-assistance.md).
+In this repo, `processor` is the assignment's `Telemetry Collector` component.
 
 ## Architecture
 
@@ -64,7 +65,7 @@ The script installs:
 - Postgres
 - 3-node queue cluster
 - 3 streamer replicas with deterministic CSV sharding
-- Processor
+- Processor (`Telemetry Collector`)
 - API
 - Prometheus
 - Grafana
@@ -110,6 +111,11 @@ Before the processor starts consuming, the dashboard shows backlog growth withou
 Once the processor is running, the dashboard shows delivery and acknowledgement activity as the backlog drains:
 
 ![Queue dashboard after consumers start](docs/images/queue-after.png)
+
+## Known Limitations
+
+- The queue supports partition leadership, follower replication, and leader forwarding, but it is not a full consensus system.
+- The submission focuses on unit tests and deployment verification; a dedicated end-to-end system test suite is not included.
 
 ## Development
 

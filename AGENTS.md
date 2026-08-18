@@ -50,3 +50,4 @@ This repository implements the Cisco GPU telemetry assignment as a Go monorepo w
 - Keep the README evaluator-friendly and focused on bring-up, URLs, and quick verification.
 - Put deeper architecture details in `docs/design.md`.
 - Put AI workflow documentation in `docs/ai-assistance.md`.
+- Use mermaid charts for architecture diagrams.
