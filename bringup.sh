@@ -125,9 +125,10 @@ echo "  API Swagger:  http://127.0.0.1:8080/swagger"
 echo "  API OpenAPI:  http://127.0.0.1:8080/openapi.json"
 echo "  API GPUs:     http://127.0.0.1:8080/api/v1/gpus"
 echo "  Grafana:      http://127.0.0.1:3000 (admin:admin)"
-echo "  Prometheus:   http://127.0.0.1:9090"
 echo
 echo "Suggested port-forwards:"
 echo "  kubectl port-forward -n $NAMESPACE svc/api-api 8080:8080"
 echo "  kubectl port-forward -n $NAMESPACE svc/grafana 3000:3000"
+echo
+echo "Optional debug access:"
 echo "  kubectl port-forward -n $NAMESPACE svc/prometheus 9090:9090"

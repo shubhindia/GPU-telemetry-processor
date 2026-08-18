@@ -77,7 +77,6 @@ After the script finishes, start these port-forwards in separate terminals:
 ```bash
 kubectl port-forward svc/api-api 8080:8080
 kubectl port-forward svc/grafana 3000:3000
-kubectl port-forward svc/prometheus 9090:9090
 ```
 
 Then open:
@@ -86,9 +85,9 @@ Then open:
 - API OpenAPI: [http://127.0.0.1:8080/openapi.json](http://127.0.0.1:8080/openapi.json)
 - GPU list: [http://127.0.0.1:8080/api/v1/gpus](http://127.0.0.1:8080/api/v1/gpus)
 - Grafana: [http://127.0.0.1:3000](http://127.0.0.1:3000) (`admin:admin`)
-- Prometheus: [http://127.0.0.1:9090](http://127.0.0.1:9090)
 
 Grafana defaults to `admin:admin` and is preloaded with the `Queue Overview` dashboard.
+Prometheus is installed as Grafana's data source, but direct access is only needed for debugging.
 
 ## API Endpoints
 
