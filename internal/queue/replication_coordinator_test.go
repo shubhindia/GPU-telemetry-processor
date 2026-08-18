@@ -75,47 +75,52 @@ func TestReplicationCoordinatorFailsWithoutQuorum(t *testing.T) {
 	}
 }
 
-func TestReplicationCoordinatorRequiresValidQuorum(t *testing.T) {
+func TestReplicationCoordinatorAllowsZeroFollowerAcks(t *testing.T) {
+	metrics := &ReplicationMetrics{}
+
+	coordinator := NewReplicationCoordinator(
+		[]Replicator{},
+		0,
+		metrics,
+	)
+
+	err := coordinator.Replicate(
+		context.Background(),
+		0,
+		Record{Offset: 10},
+	)
+	if err != nil {
+		t.Fatalf("expected zero follower acks to succeed, got %v", err)
+	}
+
+	snapshot := metrics.Snapshot()
+	if snapshot.QuorumFailures != 0 {
+		t.Fatalf("expected no quorum failures, got %d", snapshot.QuorumFailures)
+	}
+}
+
+func TestReplicationCoordinatorRejectsQuorumGreaterThanFollowers(t *testing.T) {
 	replicators := []Replicator{
 		fakeReplicator{},
 	}
+	metrics := &ReplicationMetrics{}
 
-	tests := []struct {
-		name   string
-		quorum int
-	}{
-		{
-			name:   "zero",
-			quorum: 0,
-		},
-		{
-			name:   "greater than follower count",
-			quorum: 2,
-		},
-	}
+	coordinator := NewReplicationCoordinator(
+		replicators,
+		2,
+		metrics,
+	)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			metrics := &ReplicationMetrics{}
+	err := coordinator.Replicate(
+		context.Background(),
+		0,
+		Record{Offset: 10},
+	)
 
-			coordinator := NewReplicationCoordinator(
-				replicators,
-				tt.quorum,
-				metrics,
-			)
-
-			err := coordinator.Replicate(
-				context.Background(),
-				0,
-				Record{Offset: 10},
-			)
-
-			if !errors.Is(err, ErrReplicationQuorum) {
-				t.Fatalf(
-					"expected ErrReplicationQuorum, got %v",
-					err,
-				)
-			}
-		})
+	if !errors.Is(err, ErrReplicationQuorum) {
+		t.Fatalf(
+			"expected ErrReplicationQuorum, got %v",
+			err,
+		)
 	}
 }

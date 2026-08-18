@@ -1,4 +1,4 @@
-replicaCount: 2
+replicaCount: 1
 
 image:
   repository: shubhindia/gpu-telemetry-queue
@@ -10,8 +10,8 @@ queue:
   segmentSizeBytes: "67108864"
 
   replication:
-    factor: 2
-    requiredFollowerAcks: 1
+    factor: 1
+    requiredFollowerAcks: 0
 
 storage:
   size: 1Gi
@@ -22,5 +22,11 @@ service:
 
 podSelector:
   app: gpu-telemetry-queue
+
+metrics:
+  enabled: true
+  path: /metrics
+
+podAnnotations: {}
 
 resources: {}

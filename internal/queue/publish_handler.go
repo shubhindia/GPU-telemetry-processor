@@ -77,6 +77,7 @@ func (h *PublishHandler) ServeHTTP(
 		r.Context(),
 		request.Topic,
 		Message{
+			Topic:      request.Topic,
 			ID:         request.ID,
 			RoutingKey: request.RoutingKey,
 			Payload:    []byte(request.Payload),

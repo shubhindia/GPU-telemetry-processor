@@ -26,10 +26,7 @@ func (c *ReplicationCoordinator) Replicate(
 	record Record,
 ) error {
 	if c.requiredFollowerAcks <= 0 {
-		if c.metrics != nil {
-			c.metrics.QuorumFailures.Add(1)
-		}
-		return ErrReplicationQuorum
+		return nil
 	}
 
 	if c.requiredFollowerAcks > len(c.replicators) {

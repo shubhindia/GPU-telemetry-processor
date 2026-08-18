@@ -155,6 +155,26 @@ func run() error {
 		q.NewPublishHandler(runtime),
 	)
 
+	mux.Handle(
+		"/consume",
+		q.NewConsumeHandler(runtime),
+	)
+
+	mux.Handle(
+		"/ack",
+		q.NewAckHandler(runtime),
+	)
+
+	mux.Handle(
+		"/stats",
+		q.NewStatsHandler(runtime, metrics),
+	)
+
+	mux.Handle(
+		"/metrics",
+		q.NewMetricsHandler(runtime, metrics),
+	)
+
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.API.Port),
 		Handler: mux,

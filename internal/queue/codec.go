@@ -13,6 +13,10 @@ func encodeMessage(message Message) ([]byte, error) {
 		return nil, fmt.Errorf("encode message ID: %w", err)
 	}
 
+	if err := writeString(&buf, message.Topic); err != nil {
+		return nil, fmt.Errorf("encode topic: %w", err)
+	}
+
 	if err := writeString(&buf, message.RoutingKey); err != nil {
 		return nil, fmt.Errorf("encode routing key: %w", err)
 	}
@@ -32,6 +36,11 @@ func decodeMessage(data []byte) (Message, error) {
 		return Message{}, fmt.Errorf("decode message ID: %w", err)
 	}
 
+	topic, err := readString(reader)
+	if err != nil {
+		return Message{}, fmt.Errorf("decode topic: %w", err)
+	}
+
 	routingKey, err := readString(reader)
 	if err != nil {
 		return Message{}, fmt.Errorf("decode routing key: %w", err)
@@ -43,6 +52,7 @@ func decodeMessage(data []byte) (Message, error) {
 	}
 
 	return Message{
+		Topic:      topic,
 		ID:         id,
 		RoutingKey: routingKey,
 		Payload:    payload,

@@ -23,6 +23,15 @@ type partitionState struct {
 	nextOffset       Offset
 }
 
+type partitionStoreSnapshot struct {
+	Partitions []partitionStoreStateSnapshot
+}
+
+type partitionStoreStateSnapshot struct {
+	ID         int
+	NextOffset Offset
+}
+
 type QueueConfig struct {
 	SegmentSizeBytes     int64
 	ReplicationFactor    int
@@ -203,6 +212,21 @@ func (s *PartitionStore) Close() error {
 	s.states = make(map[int]*partitionState)
 
 	return firstErr
+}
+
+func (s *PartitionStore) Snapshot() partitionStoreSnapshot {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	partitions := make([]partitionStoreStateSnapshot, 0, len(s.states))
+	for partitionID, state := range s.states {
+		partitions = append(partitions, partitionStoreStateSnapshot{
+			ID:         partitionID,
+			NextOffset: state.nextOffset,
+		})
+	}
+
+	return partitionStoreSnapshot{Partitions: partitions}
 }
 
 func (s *PartitionStore) AppendRecord(
