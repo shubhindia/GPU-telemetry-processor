@@ -4,6 +4,8 @@
 
 Distributed GPU telemetry pipeline with a replicated queue, streaming CSV replay, processor-based persistence, query API, and built-in monitoring.
 
+More design detail, including queue internals, is in [docs/design.md](./docs/design.md).
+
 ## Architecture
 
 ```mermaid
