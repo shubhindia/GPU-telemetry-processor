@@ -17,6 +17,12 @@ import (
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
 )
 
+type streamerOptions struct {
+	csvPath  string
+	queueURL string
+	topic    string
+}
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("process exited", "err", err)
@@ -45,19 +51,9 @@ func run() error {
 
 	logger := logging.Component("streamer")
 
-	csvPath := os.Getenv("STREAMER_CSV_PATH")
-	if csvPath == "" {
-		return fmt.Errorf("STREAMER_CSV_PATH is required")
-	}
-
-	queueURL := os.Getenv("STREAMER_QUEUE_URL")
-	if queueURL == "" {
-		queueURL = fmt.Sprintf("http://127.0.0.1:%d", cfg.API.Port)
-	}
-
-	topic := os.Getenv("STREAMER_TOPIC")
-	if topic == "" {
-		topic = "gpu"
+	options, err := resolveStreamerOptions(cfg)
+	if err != nil {
+		return err
 	}
 
 	shardIndex, shardCount, err := resolveShardConfig()
@@ -65,14 +61,14 @@ func run() error {
 		return err
 	}
 
-	records, err := telemetry.LoadFile(csvPath)
+	records, err := telemetry.LoadFile(options.csvPath)
 	if err != nil {
 		return err
 	}
 
 	producer, err := telemetry.NewHTTPProducer(
 		&http.Client{Timeout: 10 * time.Second},
-		queueURL,
+		options.queueURL,
 	)
 	if err != nil {
 		return err
@@ -80,7 +76,7 @@ func run() error {
 
 	replayer := telemetry.NewReplayer(
 		producer,
-		topic,
+		options.topic,
 		cfg.Streamer.RetryInitial,
 		cfg.Streamer.RetryMax,
 		shardIndex,
@@ -97,14 +93,34 @@ func run() error {
 	logger.Info(
 		"starting telemetry stream",
 		"records", len(records),
-		"csv_path", csvPath,
-		"queue_url", queueURL,
-		"topic", topic,
+		"csv_path", options.csvPath,
+		"queue_url", options.queueURL,
+		"topic", options.topic,
 		"shard_index", shardIndex,
 		"shard_count", shardCount,
 	)
 
 	return replayer.Stream(ctx, records)
+}
+
+func resolveStreamerOptions(cfg config.Config) (streamerOptions, error) {
+	options := streamerOptions{
+		queueURL: fmt.Sprintf("http://127.0.0.1:%d", cfg.API.Port),
+		topic:    "gpu",
+	}
+
+	options.csvPath = os.Getenv("STREAMER_CSV_PATH")
+	if options.csvPath == "" {
+		return streamerOptions{}, fmt.Errorf("STREAMER_CSV_PATH is required")
+	}
+	if value := os.Getenv("STREAMER_QUEUE_URL"); value != "" {
+		options.queueURL = value
+	}
+	if value := os.Getenv("STREAMER_TOPIC"); value != "" {
+		options.topic = value
+	}
+
+	return options, nil
 }
 
 func resolveShardConfig() (int, int, error) {

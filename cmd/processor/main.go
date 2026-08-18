@@ -16,6 +16,13 @@ import (
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
 )
 
+type processorOptions struct {
+	queueURL    string
+	topic       string
+	group       string
+	databaseURL string
+}
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("process exited", "err", err)
@@ -44,27 +51,9 @@ func run() error {
 
 	logger := logging.Component("processor")
 
-	queueURL := os.Getenv("PROCESSOR_QUEUE_URL")
-	if queueURL == "" {
-		queueURL = fmt.Sprintf("http://127.0.0.1:%d", cfg.API.Port)
-	}
+	options := resolveProcessorOptions(cfg)
 
-	topic := os.Getenv("PROCESSOR_TOPIC")
-	if topic == "" {
-		topic = "gpu"
-	}
-
-	group := os.Getenv("PROCESSOR_GROUP")
-	if group == "" {
-		group = "processor"
-	}
-
-	databaseURL := os.Getenv("PROCESSOR_DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = cfg.Database.URL
-	}
-
-	store, err := telemetry.OpenStore(databaseURL)
+	store, err := telemetry.OpenStore(options.databaseURL)
 	if err != nil {
 		return err
 	}
@@ -76,13 +65,13 @@ func run() error {
 
 	client, err := processor.NewHTTPClient(
 		&http.Client{Timeout: 10 * time.Second},
-		queueURL,
+		options.queueURL,
 	)
 	if err != nil {
 		return err
 	}
 
-	runner := processor.NewRunner(client, store, topic, group)
+	runner := processor.NewRunner(client, store, options.topic, options.group)
 	idleLogInterval := 30 * time.Second
 	nextIdleLog := time.Now().Add(idleLogInterval)
 
@@ -95,9 +84,9 @@ func run() error {
 
 	logger.Info(
 		"starting processor",
-		"topic", topic,
-		"group", group,
-		"queue_url", queueURL,
+		"topic", options.topic,
+		"group", options.group,
+		"queue_url", options.queueURL,
 		"poll_interval", cfg.Processor.PollInterval,
 		"retry_interval", cfg.Processor.RetryInterval,
 	)
@@ -124,8 +113,8 @@ func run() error {
 		if time.Now().After(nextIdleLog) {
 			logger.Info(
 				"processor idle",
-				"topic", topic,
-				"group", group,
+				"topic", options.topic,
+				"group", options.group,
 				"poll_interval", cfg.Processor.PollInterval,
 			)
 			nextIdleLog = time.Now().Add(idleLogInterval)
@@ -135,6 +124,30 @@ func run() error {
 			return nil
 		}
 	}
+}
+
+func resolveProcessorOptions(cfg config.Config) processorOptions {
+	options := processorOptions{
+		queueURL:    fmt.Sprintf("http://127.0.0.1:%d", cfg.API.Port),
+		topic:       "gpu",
+		group:       "processor",
+		databaseURL: cfg.Database.URL,
+	}
+
+	if value := os.Getenv("PROCESSOR_QUEUE_URL"); value != "" {
+		options.queueURL = value
+	}
+	if value := os.Getenv("PROCESSOR_TOPIC"); value != "" {
+		options.topic = value
+	}
+	if value := os.Getenv("PROCESSOR_GROUP"); value != "" {
+		options.group = value
+	}
+	if value := os.Getenv("PROCESSOR_DATABASE_URL"); value != "" {
+		options.databaseURL = value
+	}
+
+	return options
 }
 
 func sleepContext(ctx context.Context, duration time.Duration) error {

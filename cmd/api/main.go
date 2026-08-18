@@ -16,6 +16,11 @@ import (
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
 )
 
+type apiStore interface {
+	ListGPUs(ctx context.Context) ([]telemetry.GPU, error)
+	Query(ctx context.Context, query telemetry.Query) ([]telemetry.SampleRecord, error)
+}
+
 // @title GPU Telemetry API
 // @version 1.0.0
 // @description Query processed GPU telemetry samples by time window and optional filters.
@@ -71,18 +76,9 @@ func run() error {
 	)
 	defer stop()
 
-	mux := http.NewServeMux()
-	mux.Handle("/api/v1/gpus", internalapi.NewGPUListHandler(store))
-	mux.Handle("/api/v1/gpus/", internalapi.NewGPUTelemetryHandler(store))
-	mux.Handle("/telemetry", internalapi.NewMetricsHandler(store))
-	mux.Handle("/openapi.json", internalapi.NewOpenAPIHandler())
-	mux.Handle("/swagger.json", internalapi.NewOpenAPIHandler())
-	mux.Handle("/swagger", internalapi.NewSwaggerUIHandler("/openapi.json"))
-	mux.HandleFunc("/health", internalapi.HealthHandler)
-
 	server := &http.Server{
 		Addr:    cfg.API.Host + ":" + strconv.Itoa(cfg.API.Port),
-		Handler: logging.Middleware(logging.Component("api.http"), mux),
+		Handler: logging.Middleware(logging.Component("api.http"), newMux(store)),
 	}
 
 	go func() {
@@ -99,4 +95,16 @@ func run() error {
 	defer cancel()
 
 	return server.Shutdown(shutdownCtx)
+}
+
+func newMux(store apiStore) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("/api/v1/gpus", internalapi.NewGPUListHandler(store))
+	mux.Handle("/api/v1/gpus/", internalapi.NewGPUTelemetryHandler(store))
+	mux.Handle("/telemetry", internalapi.NewMetricsHandler(store))
+	mux.Handle("/openapi.json", internalapi.NewOpenAPIHandler())
+	mux.Handle("/swagger.json", internalapi.NewOpenAPIHandler())
+	mux.Handle("/swagger", internalapi.NewSwaggerUIHandler("/openapi.json"))
+	mux.HandleFunc("/health", internalapi.HealthHandler)
+	return mux
 }

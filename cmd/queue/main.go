@@ -62,19 +62,9 @@ func run() error {
 		return fmt.Errorf("HOSTNAME is required")
 	}
 
-	var localNode q.Node
-	found := false
-
-	for _, node := range nodes {
-		if node.ID == nodeID {
-			localNode = node
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("local node %q not found in cluster", nodeID)
+	localNode, err := findLocalNode(nodes, nodeID)
+	if err != nil {
+		return err
 	}
 
 	partitions := q.AssignPartitions(
@@ -151,45 +141,9 @@ func run() error {
 		replication,
 	)
 
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-
-	mux.Handle(
-		"/internal/replicate",
-		q.NewReplicationHandler(storage),
-	)
-
-	mux.Handle(
-		"/publish",
-		q.NewPublishHandler(runtime),
-	)
-
-	mux.Handle(
-		"/consume",
-		q.NewConsumeHandler(runtime),
-	)
-
-	mux.Handle(
-		"/ack",
-		q.NewAckHandler(runtime),
-	)
-
-	mux.Handle(
-		"/stats",
-		q.NewStatsHandler(runtime, metrics),
-	)
-
-	mux.Handle(
-		"/metrics",
-		q.NewMetricsHandler(runtime, metrics),
-	)
-
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.API.Port),
-		Handler: logging.Middleware(logging.Component("queue.http"), mux),
+		Handler: logging.Middleware(logging.Component("queue.http"), newQueueMux(runtime, storage, metrics)),
 	}
 
 	go func() {
@@ -218,6 +172,30 @@ func run() error {
 	defer cancel()
 
 	return server.Shutdown(shutdownCtx)
+}
+
+func findLocalNode(nodes []q.Node, nodeID string) (q.Node, error) {
+	for _, node := range nodes {
+		if node.ID == nodeID {
+			return node, nil
+		}
+	}
+
+	return q.Node{}, fmt.Errorf("local node %q not found in cluster", nodeID)
+}
+
+func newQueueMux(runtime *q.Runtime, storage q.Storage, metrics *q.ReplicationMetrics) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.Handle("/internal/replicate", q.NewReplicationHandler(storage))
+	mux.Handle("/publish", q.NewPublishHandler(runtime))
+	mux.Handle("/consume", q.NewConsumeHandler(runtime))
+	mux.Handle("/ack", q.NewAckHandler(runtime))
+	mux.Handle("/stats", q.NewStatsHandler(runtime, metrics))
+	mux.Handle("/metrics", q.NewMetricsHandler(runtime, metrics))
+	return mux
 }
 
 func discoverCluster(
