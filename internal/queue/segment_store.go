@@ -74,10 +74,11 @@ func (s *SegmentStore) Read(offset Offset) (Record, error) {
 	for {
 		if _, err := io.ReadFull(s.file, header); err != nil {
 			if err == io.EOF {
-				return Record{}, io.EOF
+				return Record{}, ErrOffsetNotFound
 			}
 
 			return Record{}, fmt.Errorf("read record header: %w", err)
+
 		}
 
 		payloadSize := binary.BigEndian.Uint32(header[0:4])
@@ -103,6 +104,61 @@ func (s *SegmentStore) Read(offset Offset) (Record, error) {
 			Message: message,
 		}, nil
 	}
+}
+
+func (s *SegmentStore) Recover() (Offset, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, err := s.file.Seek(0, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("seek segment: %w", err)
+	}
+
+	header := make([]byte, recordHeaderSize)
+
+	var (
+		nextOffset Offset
+		validBytes int64
+	)
+
+	for {
+		_, err := io.ReadFull(s.file, header)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			break
+		}
+
+		payloadSize := binary.BigEndian.Uint32(header[0:4])
+		recordOffset := Offset(binary.BigEndian.Uint64(header[4:12]))
+
+		payload := make([]byte, payloadSize)
+
+		if _, err := io.ReadFull(s.file, payload); err != nil {
+			break
+		}
+
+		if _, err := decodeMessage(payload); err != nil {
+			break
+		}
+
+		validBytes += int64(recordHeaderSize) + int64(payloadSize)
+
+		if recordOffset >= nextOffset {
+			nextOffset = recordOffset + 1
+		}
+	}
+
+	if err := s.file.Truncate(validBytes); err != nil {
+		return 0, fmt.Errorf("truncate invalid segment tail: %w", err)
+	}
+
+	if _, err := s.file.Seek(0, io.SeekEnd); err != nil {
+		return 0, fmt.Errorf("seek segment end: %w", err)
+	}
+
+	return nextOffset, nil
 }
 
 func (s *SegmentStore) Close() error {
