@@ -11,9 +11,7 @@ func TestStaticCluster(t *testing.T) {
 		{ID: "queue-1", Address: "queue-1:9000"},
 	}
 
-	partitions := AssignPartitions(nodes, 4, 2)
-
-	cluster := NewStaticCluster(nodes, partitions)
+	cluster := NewStaticCluster(nodes)
 
 	gotNodes, err := cluster.Nodes(context.Background())
 	if err != nil {
@@ -24,12 +22,7 @@ func TestStaticCluster(t *testing.T) {
 		t.Fatalf("expected 2 nodes, got %d", len(gotNodes))
 	}
 
-	gotPartitions, err := cluster.Partitions(context.Background())
-	if err != nil {
-		t.Fatalf("get partitions: %v", err)
-	}
-
-	if len(gotPartitions) != 4 {
-		t.Fatalf("expected 4 partitions, got %d", len(gotPartitions))
+	if gotNodes[0].ID != "queue-0" {
+		t.Fatalf("expected first node queue-0, got %q", gotNodes[0].ID)
 	}
 }

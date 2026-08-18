@@ -3,13 +3,11 @@ package queue
 import "context"
 
 type Runtime struct {
-	cluster              Cluster
-	partition            PartitionManager
-	storage              Storage
-	router               PartitionRouter
-	replicatorFactory    *ReplicatorFactory
-	requiredFollowerAcks int
-	metrics              *ReplicationMetrics
+	cluster     Cluster
+	partition   PartitionManager
+	storage     Storage
+	router      PartitionRouter
+	replication map[int]*ReplicationCoordinator
 }
 
 func NewRuntime(
@@ -17,18 +15,14 @@ func NewRuntime(
 	partition PartitionManager,
 	storage Storage,
 	router PartitionRouter,
-	replicatorFactory *ReplicatorFactory,
-	requiredFollowerAcks int,
-	metrics *ReplicationMetrics,
+	replication map[int]*ReplicationCoordinator,
 ) *Runtime {
 	return &Runtime{
-		cluster:              cluster,
-		partition:            partition,
-		storage:              storage,
-		router:               router,
-		replicatorFactory:    replicatorFactory,
-		requiredFollowerAcks: requiredFollowerAcks,
-		metrics:              metrics,
+		cluster:     cluster,
+		partition:   partition,
+		storage:     storage,
+		router:      router,
+		replication: replication,
 	}
 }
 
@@ -61,33 +55,14 @@ func (r *Runtime) Publish(
 		return err
 	}
 
-	if r.replicatorFactory == nil {
+	if r.replication == nil {
 		return nil
 	}
 
-	var partitionConfig Partition
-	for _, partition := range partitions {
-		if partition.ID == partitionID {
-			partitionConfig = partition
-			break
-		}
+	coordinator := r.replication[partitionID]
+	if coordinator == nil {
+		return nil
 	}
-
-	nodes, err := r.cluster.Nodes(ctx)
-	if err != nil {
-		return err
-	}
-
-	replicators := r.replicatorFactory.ForPartition(
-		partitionConfig,
-		nodes,
-	)
-
-	coordinator := NewReplicationCoordinator(
-		replicators,
-		r.requiredFollowerAcks,
-		r.metrics,
-	)
 
 	return coordinator.Replicate(
 		ctx,

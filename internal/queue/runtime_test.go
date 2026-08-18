@@ -56,12 +56,6 @@ func (c *runtimeTestCluster) Nodes(
 	return c.nodes, nil
 }
 
-func (c *runtimeTestCluster) Partitions(
-	_ context.Context,
-) ([]Partition, error) {
-	return nil, nil
-}
-
 type runtimeTestTransport struct {
 	err error
 }
@@ -116,18 +110,12 @@ func TestRuntimePublish(t *testing.T) {
 		offset: 42,
 	}
 
-	transport := &runtimeTestTransport{}
-
-	factory := NewReplicatorFactory(transport)
-
 	runtime := NewRuntime(
 		cluster,
 		*partitionManager,
 		storage,
 		HashPartitionRouter{},
-		factory,
-		1,
-		&ReplicationMetrics{},
+		nil,
 	)
 
 	err := runtime.Publish(
@@ -191,8 +179,6 @@ func TestRuntimePublishRejectsFollower(t *testing.T) {
 		storage,
 		HashPartitionRouter{},
 		nil,
-		1,
-		&ReplicationMetrics{},
 	)
 
 	err := runtime.Publish(
@@ -253,20 +239,18 @@ func TestRuntimePublishFailsWithoutFollowerQuorum(t *testing.T) {
 		offset: 42,
 	}
 
-	transport := &runtimeTestTransport{
-		err: errors.New("follower unavailable"),
-	}
-
-	factory := NewReplicatorFactory(transport)
-
 	runtime := NewRuntime(
 		cluster,
 		*partitionManager,
 		storage,
 		HashPartitionRouter{},
-		factory,
-		1,
-		&ReplicationMetrics{},
+		map[int]*ReplicationCoordinator{
+			0: NewReplicationCoordinator(
+				[]Replicator{},
+				1,
+				nil,
+			),
+		},
 	)
 
 	err := runtime.Publish(

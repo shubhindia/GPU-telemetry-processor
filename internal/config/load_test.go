@@ -17,6 +17,7 @@ queue:
   data_dir: /tmp/queue
   partitions: 4
   segment_size_bytes: 67108864
+
   replication:
     factor: 3
     required_follower_acks: 2

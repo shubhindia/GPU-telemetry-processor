@@ -35,6 +35,7 @@ func (c Config) Validate() error {
 	if c.Queue.SegmentSizeBytes <= 0 {
 		return fmt.Errorf("queue segment size must be greater than zero")
 	}
+
 	if c.Queue.Replication.Factor <= 0 {
 		return fmt.Errorf("queue replication factor must be greater than zero")
 	}

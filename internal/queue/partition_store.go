@@ -100,6 +100,10 @@ func (s *PartitionStore) Append(
 		return 0, fmt.Errorf("append partition %d: %w", partitionID, err)
 	}
 
+	if err := segment.Flush(); err != nil {
+		return 0, fmt.Errorf("flush partition %d: %w", partitionID, err)
+	}
+
 	state.nextOffset++
 
 	return offset, nil
@@ -146,7 +150,6 @@ func (s *PartitionStore) Read(
 		offset,
 		ErrOffsetNotFound,
 	)
-
 }
 
 func (s *PartitionStore) Flush(
@@ -167,7 +170,11 @@ func (s *PartitionStore) Flush(
 
 	for _, segment := range segments {
 		if err := segment.Flush(); err != nil {
-			return fmt.Errorf("flush partition %d: %w", partitionID, err)
+			return fmt.Errorf(
+				"flush partition %d: %w",
+				partitionID,
+				err,
+			)
 		}
 	}
 
@@ -178,10 +185,12 @@ func (s *PartitionStore) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	var firstErr error
+
 	for partitionID, segments := range s.segments {
 		for _, segment := range segments {
-			if err := segment.Close(); err != nil {
-				return fmt.Errorf(
+			if err := segment.Close(); err != nil && firstErr == nil {
+				firstErr = fmt.Errorf(
 					"close partition %d: %w",
 					partitionID,
 					err,
@@ -193,7 +202,7 @@ func (s *PartitionStore) Close() error {
 	s.segments = make(map[int][]*SegmentStore)
 	s.states = make(map[int]*partitionState)
 
-	return nil
+	return firstErr
 }
 
 func (s *PartitionStore) AppendRecord(
@@ -228,6 +237,14 @@ func (s *PartitionStore) AppendRecord(
 	if err := segment.Append(record); err != nil {
 		return fmt.Errorf(
 			"append record to partition %d: %w",
+			partitionID,
+			err,
+		)
+	}
+
+	if err := segment.Flush(); err != nil {
+		return fmt.Errorf(
+			"flush partition %d: %w",
 			partitionID,
 			err,
 		)

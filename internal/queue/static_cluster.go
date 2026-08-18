@@ -3,21 +3,15 @@ package queue
 import "context"
 
 type StaticCluster struct {
-	nodes      []Node
-	partitions []Partition
+	nodes []Node
 }
 
-func NewStaticCluster(nodes []Node, partitions []Partition) *StaticCluster {
+func NewStaticCluster(nodes []Node) *StaticCluster {
 	return &StaticCluster{
-		nodes:      nodes,
-		partitions: partitions,
+		nodes: nodes,
 	}
 }
 
 func (c *StaticCluster) Nodes(ctx context.Context) ([]Node, error) {
 	return c.nodes, nil
-}
-
-func (c *StaticCluster) Partitions(ctx context.Context) ([]Partition, error) {
-	return c.partitions, nil
 }
