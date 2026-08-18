@@ -135,6 +135,7 @@ Build and test:
 
 ```bash
 make test
+make swagger
 ```
 
 Build images with Podman:
@@ -303,6 +304,8 @@ The `/metrics` endpoint exposes Prometheus-format counters and gauges for publis
 Both the queue and API also emit structured request logs with method, path, status, duration, and response size.
 
 The API also serves an OpenAPI document at `/openapi.json` and a Swagger UI page at `/swagger` for interactive testing.
+
+The checked-in OpenAPI artifact is [docs/openapi.json](/Users/sgopale/Work/shubhindia/gpu-telemetry/docs/openapi.json). Regenerate it with `make swagger`.
 
 The monitoring manifests under [deploy/k8s/monitoring](/Users/sgopale/Work/shubhindia/gpu-telemetry/deploy/k8s/monitoring) deploy Prometheus to scrape annotated queue pods and Grafana with a ready-made dashboard for queue counters, throughput, inflight messages, replication behavior, and partition offsets.
 

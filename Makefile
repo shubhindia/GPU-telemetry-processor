@@ -7,13 +7,17 @@ STREAMER_IMAGE := $(IMAGE_REPO_PREFIX)-streamer:$(IMAGE_TAG)
 PROCESSOR_IMAGE := $(IMAGE_REPO_PREFIX)-processor:$(IMAGE_TAG)
 API_IMAGE := $(IMAGE_REPO_PREFIX)-api:$(IMAGE_TAG)
 
-.PHONY: fmt test build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
+.PHONY: fmt test swagger build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
 
 fmt:
 	@go fmt ./...
 
 test:
 	@go test ./...
+
+swagger:
+	@mkdir -p docs
+	@go run ./cmd/openapi-gen > docs/openapi.json
 
 build-queue:
 	$(DOCKER) build --build-arg COMPONENT=queue -t $(QUEUE_IMAGE) .
