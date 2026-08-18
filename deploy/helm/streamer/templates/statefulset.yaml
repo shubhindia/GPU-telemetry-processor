@@ -1,11 +1,13 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "streamer.fullname" . }}
   labels:
     {{- include "streamer.labels" . | nindent 4 }}
 spec:
+  serviceName: {{ include "streamer.fullname" . }}
   replicas: {{ .Values.replicaCount }}
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       {{- include "streamer.labels" . | nindent 6 }}
@@ -28,6 +30,12 @@ spec:
               value: {{ .Values.queue.topic | quote }}
             - name: STREAMER_CSV_PATH
               value: {{ include "streamer.csvPath" . | quote }}
+            - name: STREAMER_SHARD_COUNT
+              value: {{ .Values.replicaCount | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           volumeMounts:
             - name: config
               mountPath: /etc/streamer

@@ -15,6 +15,8 @@ type Replayer struct {
 	topic        string
 	retryInitial time.Duration
 	retryMax     time.Duration
+	shardIndex   int
+	shardCount   int
 	logger       *slog.Logger
 	now          func() time.Time
 	sleep        func(context.Context, time.Duration) error
@@ -25,12 +27,16 @@ func NewReplayer(
 	topic string,
 	retryInitial time.Duration,
 	retryMax time.Duration,
+	shardIndex int,
+	shardCount int,
 ) *Replayer {
 	return &Replayer{
 		producer:     producer,
 		topic:        topic,
 		retryInitial: retryInitial,
 		retryMax:     retryMax,
+		shardIndex:   shardIndex,
+		shardCount:   shardCount,
 		logger:       logging.Component("telemetry.replayer"),
 		now:          time.Now,
 		sleep:        sleep,
@@ -42,16 +48,27 @@ func (r *Replayer) Stream(ctx context.Context, records []Record) error {
 		return fmt.Errorf("no telemetry records to publish")
 	}
 
+	shardRecords, err := r.recordsForShard(records)
+	if err != nil {
+		return err
+	}
+
 	var sequence uint64
 
 	for {
-		r.logger.Debug("starting replay cycle", "topic", r.topic, "records", len(records))
+		r.logger.Debug(
+			"starting replay cycle",
+			"topic", r.topic,
+			"records", len(shardRecords),
+			"shard_index", r.shardIndex,
+			"shard_count", r.shardCount,
+		)
 
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 
-		for _, record := range records {
+		for _, record := range shardRecords {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
@@ -62,6 +79,35 @@ func (r *Replayer) Stream(ctx context.Context, records []Record) error {
 			sequence++
 		}
 	}
+}
+
+func (r *Replayer) recordsForShard(records []Record) ([]Record, error) {
+	if r.shardCount <= 0 {
+		return nil, fmt.Errorf("streamer shard count must be greater than zero")
+	}
+	if r.shardIndex < 0 || r.shardIndex >= r.shardCount {
+		return nil, fmt.Errorf("streamer shard index must be between 0 and shard count - 1")
+	}
+	if r.shardCount == 1 {
+		return records, nil
+	}
+
+	shardRecords := make([]Record, 0, (len(records)+r.shardCount-1)/r.shardCount)
+	for index, record := range records {
+		if index%r.shardCount == r.shardIndex {
+			shardRecords = append(shardRecords, record)
+		}
+	}
+
+	if len(shardRecords) == 0 {
+		return nil, fmt.Errorf(
+			"streamer shard %d of %d has no records assigned",
+			r.shardIndex,
+			r.shardCount,
+		)
+	}
+
+	return shardRecords, nil
 }
 
 func (r *Replayer) publishWithRetry(

@@ -104,9 +104,11 @@ queue:
   partitions: 4
   segment_size_bytes: 67108864
   replication:
-    factor: 2
+    factor: 3
     required_follower_acks: 1
 ```
+
+For Kubernetes HA, the default queue chart uses `replicaCount: 3`, `factor: 3`, and `required_follower_acks: 1`, which gives majority-style durability with one follower acknowledgement in addition to the leader's local append.
 
 For a single-node local deployment, use:
 
@@ -195,6 +197,15 @@ Install the streamer with the PVC-backed CSV mount:
 
 ```bash
 helm install streamer ./deploy/helm/streamer -f ./deploy/helm/streamer/values.pvc-example.yaml
+```
+
+The streamer chart runs as a StatefulSet so replicas can shard the CSV deterministically by row index. To scale publishing throughput without duplicating the entire CSV, update `replicaCount` through Helm so each pod gets the correct shard count:
+
+```bash
+helm upgrade streamer ./deploy/helm/streamer \
+  -f ./deploy/helm/streamer/values.pvc-example.yaml \
+  --reuse-values \
+  --set replicaCount=3
 ```
 
 Install the processor and API:

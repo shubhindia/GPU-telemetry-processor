@@ -1,3 +1,5 @@
+replicaCount: 3
+
 queue:
   url: http://queue-queue:8080
   topic: gpu

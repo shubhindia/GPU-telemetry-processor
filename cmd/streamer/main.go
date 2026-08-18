@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -58,6 +60,11 @@ func run() error {
 		topic = "gpu"
 	}
 
+	shardIndex, shardCount, err := resolveShardConfig()
+	if err != nil {
+		return err
+	}
+
 	records, err := telemetry.LoadFile(csvPath)
 	if err != nil {
 		return err
@@ -76,6 +83,8 @@ func run() error {
 		topic,
 		cfg.Streamer.RetryInitial,
 		cfg.Streamer.RetryMax,
+		shardIndex,
+		shardCount,
 	)
 
 	ctx, stop := signal.NotifyContext(
@@ -91,7 +100,64 @@ func run() error {
 		"csv_path", csvPath,
 		"queue_url", queueURL,
 		"topic", topic,
+		"shard_index", shardIndex,
+		"shard_count", shardCount,
 	)
 
 	return replayer.Stream(ctx, records)
+}
+
+func resolveShardConfig() (int, int, error) {
+	shardCount := 1
+	if raw := os.Getenv("STREAMER_SHARD_COUNT"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			return 0, 0, fmt.Errorf("STREAMER_SHARD_COUNT must be a positive integer")
+		}
+		shardCount = parsed
+	}
+
+	if raw := os.Getenv("STREAMER_SHARD_INDEX"); raw != "" {
+		shardIndex, err := strconv.Atoi(raw)
+		if err != nil {
+			return 0, 0, fmt.Errorf("STREAMER_SHARD_INDEX must be an integer")
+		}
+		if shardIndex < 0 || shardIndex >= shardCount {
+			return 0, 0, fmt.Errorf("STREAMER_SHARD_INDEX must be between 0 and STREAMER_SHARD_COUNT - 1")
+		}
+		return shardIndex, shardCount, nil
+	}
+
+	if shardCount == 1 {
+		return 0, 1, nil
+	}
+
+	podName := os.Getenv("POD_NAME")
+	if podName == "" {
+		return 0, 0, fmt.Errorf("POD_NAME is required when STREAMER_SHARD_COUNT is greater than 1")
+	}
+
+	shardIndex, err := parseStatefulSetOrdinal(podName)
+	if err != nil {
+		return 0, 0, err
+	}
+	if shardIndex >= shardCount {
+		return 0, 0, fmt.Errorf("pod ordinal %d must be less than STREAMER_SHARD_COUNT %d", shardIndex, shardCount)
+	}
+
+	return shardIndex, shardCount, nil
+}
+
+func parseStatefulSetOrdinal(podName string) (int, error) {
+	separator := strings.LastIndex(podName, "-")
+	if separator < 0 || separator == len(podName)-1 {
+		return 0, fmt.Errorf("POD_NAME %q does not contain a StatefulSet ordinal", podName)
+	}
+
+	ordinal, err := strconv.Atoi(podName[separator+1:])
+	if err != nil {
+		return 0, fmt.Errorf("POD_NAME %q does not contain a valid StatefulSet ordinal", podName)
+	}
+
+	return ordinal, nil
 }
