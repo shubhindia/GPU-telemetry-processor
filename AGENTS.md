@@ -21,9 +21,10 @@ This repository implements the Cisco GPU telemetry assignment as a Go monorepo w
 
 ## Preferred Workflows
 
-- Use `make fmt`, `make test`, `make coverage`, and `make swagger` instead of ad hoc command variants when possible.
+- Use `make fmt`, `make test`, `make coverage`, `make swagger`, and `make system-test` instead of ad hoc command variants when possible.
 - Use `./bringup.sh` for full local cluster installation.
 - Use `./cleanup.sh` to remove installed components.
+- `make system-test` is the CI-oriented end-to-end smoke path. It expects `kind`, `helm`, `kubectl`, `jq`, and a Docker daemon.
 - Keep Swagger generated output in `internal/api/docs/` up to date when API routes or annotations change.
 
 ## Go Toolchain Notes

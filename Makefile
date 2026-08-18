@@ -12,7 +12,7 @@ STREAMER_IMAGE := $(IMAGE_REPO_PREFIX)-streamer:$(IMAGE_TAG)
 PROCESSOR_IMAGE := $(IMAGE_REPO_PREFIX)-processor:$(IMAGE_TAG)
 API_IMAGE := $(IMAGE_REPO_PREFIX)-api:$(IMAGE_TAG)
 
-.PHONY: fmt test coverage show-coverage swagger swagger-check clean-go-cache build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
+.PHONY: fmt test coverage show-coverage swagger swagger-check clean-go-cache system-test build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
 
 fmt:
 	@$(GOENV) $(GO_CMD) fmt ./...
@@ -37,6 +37,9 @@ swagger-check: swagger
 
 clean-go-cache:
 	@rm -rf .gocache .gomodcache coverage.out coverage.html
+
+system-test:
+	@./test/system/run.sh
 
 build-queue:
 	$(DOCKER) build --build-arg COMPONENT=queue -t $(QUEUE_IMAGE) .

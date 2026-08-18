@@ -1,0 +1,38 @@
+name: System Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  system-test:
+    name: End-to-End Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: gpu-telemetry-ci
+          wait: 300s
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Run end-to-end smoke test
+        run: |
+          make system-test \
+            KIND_CLUSTER_NAME=gpu-telemetry-ci \
+            SYSTEM_TEST_CREATE_CLUSTER=0 \
+            IMAGE_REPO_PREFIX=local/gpu-telemetry \
+            IMAGE_TAG=ci \
+            SYSTEM_TEST_DOCKER=docker

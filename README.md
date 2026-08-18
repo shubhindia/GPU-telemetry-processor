@@ -111,12 +111,7 @@ Once the processor is running, the dashboard shows delivery and acknowledgement 
 
 ![Queue dashboard after consumers start](docs/images/queue-after.png)
 
-## Known Limitations
-
-- The queue supports partition leadership, follower replication, and leader forwarding, but it is not a full consensus system.
-- The submission focuses on unit tests and deployment verification; a dedicated end-to-end system test suite is not included.
-
-## Development
+## Testing
 
 Useful local commands:
 
@@ -126,7 +121,10 @@ make test
 make swagger
 make build-images
 make push-images
+make system-test
 ```
+
+`make system-test` is a CI-oriented end-to-end smoke test. It creates or reuses a `kind` cluster, builds local images, installs the Helm charts, waits for ingestion, and verifies queue, processor, Postgres, and API behavior together.
 
 `make swagger` regenerates the checked-in Swagger spec in [internal/api/docs](./internal/api/docs).
 The API still serves that generated spec at [http://127.0.0.1:8080/openapi.json](http://127.0.0.1:8080/openapi.json).
