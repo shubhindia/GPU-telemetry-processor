@@ -1,0 +1,26 @@
+replicaCount: 2
+
+image:
+  repository: shubhindia/gpu-telemetry-queue
+  tag: latest
+  pullPolicy: Always
+
+queue:
+  partitions: 4
+  segmentSizeBytes: "67108864"
+
+  replication:
+    factor: 2
+    requiredFollowerAcks: 1
+
+storage:
+  size: 1Gi
+  storageClass: ""
+
+service:
+  port: 8080
+
+podSelector:
+  app: gpu-telemetry-queue
+
+resources: {}
