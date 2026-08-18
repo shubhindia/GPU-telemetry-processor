@@ -5,6 +5,14 @@ image:
   tag: latest
   pullPolicy: Always
 
+database:
+  url: postgres://postgres:postgres@postgres-postgres:5432/gpu_telemetry?sslmode=disable
+
+logging:
+  level: info
+  format: text
+  addSource: false
+
 queue:
   partitions: 4
   segmentSizeBytes: "67108864"

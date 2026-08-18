@@ -4,8 +4,10 @@ IMAGE_REPO_PREFIX ?= shubhindia/gpu-telemetry
 
 QUEUE_IMAGE := $(IMAGE_REPO_PREFIX)-queue:$(IMAGE_TAG)
 STREAMER_IMAGE := $(IMAGE_REPO_PREFIX)-streamer:$(IMAGE_TAG)
+PROCESSOR_IMAGE := $(IMAGE_REPO_PREFIX)-processor:$(IMAGE_TAG)
+API_IMAGE := $(IMAGE_REPO_PREFIX)-api:$(IMAGE_TAG)
 
-.PHONY: fmt test build-queue build-streamer build-images push-queue push-streamer push-images
+.PHONY: fmt test build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
 
 fmt:
 	@go fmt ./...
@@ -19,7 +21,13 @@ build-queue:
 build-streamer:
 	$(DOCKER) build --build-arg COMPONENT=streamer -t $(STREAMER_IMAGE) .
 
-build-images: build-queue build-streamer
+build-processor:
+	$(DOCKER) build --build-arg COMPONENT=processor -t $(PROCESSOR_IMAGE) .
+
+build-api:
+	$(DOCKER) build --build-arg COMPONENT=api -t $(API_IMAGE) .
+
+build-images: build-queue build-streamer build-processor build-api
 
 push-queue: build-queue
 	$(DOCKER) push $(QUEUE_IMAGE)
@@ -27,4 +35,10 @@ push-queue: build-queue
 push-streamer: build-streamer
 	$(DOCKER) push $(STREAMER_IMAGE)
 
-push-images: push-queue push-streamer
+push-processor: build-processor
+	$(DOCKER) push $(PROCESSOR_IMAGE)
+
+push-api: build-api
+	$(DOCKER) push $(API_IMAGE)
+
+push-images: push-queue push-streamer push-processor push-api

@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "streamer.fullname" . }}-config
+  name: {{ include "api.fullname" . }}-config
   labels:
-    {{- include "streamer.labels" . | nindent 4 }}
+    {{- include "api.labels" . | nindent 4 }}
 data:
   config.yaml: |
     logging:
@@ -32,8 +32,8 @@ data:
       workers: {{ .Values.config.collector.workers }}
 
     processor:
-      poll_interval: 250ms
-      retry_interval: 1s
+      poll_interval: {{ .Values.config.processor.pollInterval }}
+      retry_interval: {{ .Values.config.processor.retryInterval }}
 
     api:
       host: {{ .Values.config.api.host }}

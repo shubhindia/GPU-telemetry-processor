@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "processor.fullname" . }}
+  labels:
+    {{- include "processor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "processor.labels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app: gpu-telemetry-processor
+        {{- include "processor.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: processor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: PROCESSOR_CONFIG
+              value: /etc/processor/config.yaml
+            - name: PROCESSOR_QUEUE_URL
+              value: {{ .Values.queue.url | quote }}
+            - name: PROCESSOR_TOPIC
+              value: {{ .Values.queue.topic | quote }}
+            - name: PROCESSOR_GROUP
+              value: {{ .Values.queue.group | quote }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/processor
+              readOnly: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "processor.fullname" . }}-config

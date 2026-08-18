@@ -1,0 +1,21 @@
+image:
+  repository: postgres
+  tag: "16"
+  pullPolicy: IfNotPresent
+
+auth:
+  username: postgres
+  password: postgres
+  database: gpu_telemetry
+
+service:
+  port: 5432
+
+storage:
+  size: 5Gi
+  storageClass: ""
+  existingClaim: ""
+
+resources: {}
+
+podAnnotations: {}

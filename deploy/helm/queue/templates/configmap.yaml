@@ -6,6 +6,14 @@ metadata:
     {{- include "queue.labels" . | nindent 4 }}
 data:
   config.yaml: |
+    logging:
+      level: {{ .Values.logging.level }}
+      format: {{ .Values.logging.format }}
+      add_source: {{ .Values.logging.addSource }}
+
+    database:
+      url: {{ .Values.database.url }}
+
     queue:
       data_dir: /var/lib/queue
       partitions: {{ .Values.queue.partitions }}
@@ -22,6 +30,10 @@ data:
 
     collector:
       workers: 2
+
+    processor:
+      poll_interval: 250ms
+      retry_interval: 1s
 
     api:
       host: 0.0.0.0
