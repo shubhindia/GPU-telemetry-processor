@@ -5,6 +5,7 @@
 Distributed GPU telemetry pipeline with a replicated queue, streaming CSV replay, processor-based persistence, query API, and built-in monitoring.
 
 More design detail, including queue internals, is in [docs/design.md](./docs/design.md).
+AI workflow notes for the assignment are in [docs/ai-assistance.md](./docs/ai-assistance.md).
 
 ## Architecture
 
