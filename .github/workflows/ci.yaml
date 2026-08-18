@@ -29,10 +29,10 @@ jobs:
       - name: Run tests with coverage
         run: make coverage
 
-      - name: Verify generated OpenAPI spec is up to date
+      - name: Verify generated Swagger spec is up to date
         run: |
           make swagger
-          git diff --exit-code -- docs/openapi.json
+          git diff --exit-code -- internal/api/docs/
 
       - name: Capture coverage
         id: coverage

@@ -1,0 +1,349 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Query processed GPU telemetry samples by time window and optional filters.",
+        "title": "GPU Telemetry API",
+        "contact": {},
+        "version": "1.0.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/v1/gpus": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GPUs"
+                ],
+                "summary": "List GPUs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GPUListDocResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/gpus/{id}/telemetry": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GPUs"
+                ],
+                "summary": "Query telemetry for a GPU",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "GPU UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start of the query window in RFC3339 format",
+                        "name": "start_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End of the query window in RFC3339 format",
+                        "name": "end_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relative query window such as 5m, 15m, or 1h",
+                        "name": "window",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional metric name filter",
+                        "name": "metric_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional hostname filter",
+                        "name": "hostname",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional GPU ID filter",
+                        "name": "gpu_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional device filter",
+                        "name": "device",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Optional result limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.GPUTelemetryDocResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/telemetry": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Telemetry"
+                ],
+                "summary": "Query telemetry samples",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start of the query window in RFC3339 format",
+                        "name": "start",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End of the query window in RFC3339 format",
+                        "name": "end",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relative query window such as 5m, 15m, or 1h",
+                        "name": "window",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional metric name filter",
+                        "name": "metric_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional GPU UUID filter",
+                        "name": "uuid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional hostname filter",
+                        "name": "hostname",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional GPU ID filter",
+                        "name": "gpu_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional device filter",
+                        "name": "device",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Optional result limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.TelemetryQueryDocResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "api.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.GPUDoc": {
+            "type": "object",
+            "properties": {
+                "Hostname": {
+                    "type": "string"
+                },
+                "device": {
+                    "type": "string"
+                },
+                "gpu_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "modelName": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.GPUListDocResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.GPUDoc"
+                    }
+                }
+            }
+        },
+        "api.GPUTelemetryDocResponse": {
+            "type": "object",
+            "properties": {
+                "gpu_id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TelemetrySampleDoc"
+                    }
+                }
+            }
+        },
+        "api.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.TelemetryQueryDocResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.TelemetrySampleDoc"
+                    }
+                }
+            }
+        },
+        "api.TelemetrySampleDoc": {
+            "type": "object",
+            "properties": {
+                "Hostname": {
+                    "type": "string"
+                },
+                "container": {
+                    "type": "string"
+                },
+                "device": {
+                    "type": "string"
+                },
+                "gpu_id": {
+                    "type": "string"
+                },
+                "labels_raw": {
+                    "type": "string"
+                },
+                "metric_name": {
+                    "type": "string"
+                },
+                "modelName": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "pod": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "uuid": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        }
+    }
+}

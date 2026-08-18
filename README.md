@@ -120,4 +120,5 @@ make build-images
 make push-images
 ```
 
-The generated OpenAPI spec is checked in at [docs/openapi.json](./docs/openapi.json).
+`make swagger` regenerates the checked-in Swagger spec in [internal/api/docs](./internal/api/docs).
+The API still serves that generated spec at [http://127.0.0.1:8080/openapi.json](http://127.0.0.1:8080/openapi.json).

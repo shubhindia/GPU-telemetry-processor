@@ -16,6 +16,11 @@ import (
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
 )
 
+// @title GPU Telemetry API
+// @version 1.0.0
+// @description Query processed GPU telemetry samples by time window and optional filters.
+// @BasePath /
+
 func main() {
 	if err := run(); err != nil {
 		slog.Error("process exited", "err", err)
@@ -67,14 +72,13 @@ func run() error {
 	defer stop()
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/v1/gpus", internalapi.NewGPUsHandler(store))
-	mux.Handle("/api/v1/gpus/", internalapi.NewGPUsHandler(store))
+	mux.Handle("/api/v1/gpus", internalapi.NewGPUListHandler(store))
+	mux.Handle("/api/v1/gpus/", internalapi.NewGPUTelemetryHandler(store))
 	mux.Handle("/telemetry", internalapi.NewMetricsHandler(store))
 	mux.Handle("/openapi.json", internalapi.NewOpenAPIHandler())
-	mux.Handle("/swagger", internalapi.NewSwaggerUIHandler())
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux.Handle("/swagger.json", internalapi.NewOpenAPIHandler())
+	mux.Handle("/swagger", internalapi.NewSwaggerUIHandler("/openapi.json"))
+	mux.HandleFunc("/health", internalapi.HealthHandler)
 
 	server := &http.Server{
 		Addr:    cfg.API.Host + ":" + strconv.Itoa(cfg.API.Port),

@@ -28,7 +28,7 @@ func (s *gpusTestStore) Query(_ context.Context, query telemetry.Query) ([]telem
 }
 
 func TestGPUsHandlerListsGPUs(t *testing.T) {
-	handler := NewGPUsHandler(&gpusTestStore{gpus: []telemetry.GPU{{
+	handler := NewGPUListHandler(&gpusTestStore{gpus: []telemetry.GPU{{
 		ID:        "GPU-1",
 		UUID:      "GPU-1",
 		GPUID:     "0",
@@ -63,7 +63,7 @@ func TestGPUsHandlerReturnsTelemetryForGPU(t *testing.T) {
 		UUID:       "GPU-1",
 		Value:      42,
 	}}}
-	handler := NewGPUsHandler(store)
+	handler := NewGPUTelemetryHandler(store)
 	req := httptest.NewRequest(
 		http.MethodGet,
 		"/api/v1/gpus/GPU-1/telemetry?start_time=2026-08-18T08:00:00Z&end_time=2026-08-18T08:05:00Z&metric_name=gpu_util&limit=10",
@@ -93,7 +93,7 @@ func TestGPUsHandlerReturnsTelemetryForGPU(t *testing.T) {
 }
 
 func TestGPUsHandlerRequiresTimeWindowForTelemetry(t *testing.T) {
-	handler := NewGPUsHandler(&gpusTestStore{})
+	handler := NewGPUTelemetryHandler(&gpusTestStore{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/gpus/GPU-1/telemetry", nil)
 	recorder := httptest.NewRecorder()
 
@@ -110,7 +110,7 @@ func TestGPUsHandlerSupportsRelativeWindow(t *testing.T) {
 	defer func() { nowFunc = originalNow }()
 
 	store := &gpusTestStore{}
-	handler := NewGPUsHandler(store)
+	handler := NewGPUTelemetryHandler(store)
 	req := httptest.NewRequest(
 		http.MethodGet,
 		"/api/v1/gpus/GPU-1/telemetry?window=5m&metric_name=gpu_util",

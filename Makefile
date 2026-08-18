@@ -1,27 +1,42 @@
 DOCKER ?= podman
+override GO := $(shell command -v go)
 IMAGE_TAG ?= latest
 IMAGE_REPO_PREFIX ?= shubhindia/gpu-telemetry
+
+GO_CMD := $(shell $(GO) env GOROOT)/bin/go
+GO_VERSION := $(shell $(GO_CMD) env GOVERSION)
+GOENV = env -u GO -u GOROOT -u GOTOOLDIR -u GOFLAGS GOCACHE=$(CURDIR)/.gocache/$(GO_VERSION) GOMODCACHE=$(CURDIR)/.gomodcache/$(GO_VERSION)
 
 QUEUE_IMAGE := $(IMAGE_REPO_PREFIX)-queue:$(IMAGE_TAG)
 STREAMER_IMAGE := $(IMAGE_REPO_PREFIX)-streamer:$(IMAGE_TAG)
 PROCESSOR_IMAGE := $(IMAGE_REPO_PREFIX)-processor:$(IMAGE_TAG)
 API_IMAGE := $(IMAGE_REPO_PREFIX)-api:$(IMAGE_TAG)
 
-.PHONY: fmt test coverage swagger build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
+.PHONY: fmt test coverage show-coverage swagger swagger-check clean-go-cache build-queue build-streamer build-processor build-api build-images push-queue push-streamer push-processor push-api push-images
 
 fmt:
-	@go fmt ./...
+	@$(GOENV) $(GO_CMD) fmt ./...
 
 test:
-	@go test ./...
+	@$(GOENV) $(GO_CMD) test ./...
 
 coverage:
-	@go test ./... -covermode=atomic -coverprofile=coverage.out
-	@go tool cover -func=coverage.out
+	@$(GOENV) $(GO_CMD) test ./... -covermode=atomic -coverprofile=coverage.out
+	@$(GOENV) $(GO_CMD) tool cover -func=coverage.out
+
+show-coverage: coverage
+	@$(GOENV) $(GO_CMD) tool cover -html=coverage.out -o coverage.html
+	@open coverage.html
 
 swagger:
-	@mkdir -p docs
-	@go run ./cmd/openapi-gen > docs/openapi.json
+	@mkdir -p internal/api/docs
+	@$(GOENV) $(GO_CMD) generate ./internal/api
+
+swagger-check: swagger
+	@git diff --exit-code -- internal/api/docs/
+
+clean-go-cache:
+	@rm -rf .gocache .gomodcache coverage.out coverage.html
 
 build-queue:
 	$(DOCKER) build --build-arg COMPONENT=queue -t $(QUEUE_IMAGE) .

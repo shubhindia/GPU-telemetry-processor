@@ -26,6 +26,24 @@ func NewMetricsHandler(store QueryStore) *MetricsHandler {
 	}
 }
 
+// QueryTelemetry godoc
+//
+//	@Summary	Query telemetry samples
+//	@Tags		Telemetry
+//	@Produce	json
+//	@Param		start		query		string	false	"Start of the query window in RFC3339 format"
+//	@Param		end			query		string	false	"End of the query window in RFC3339 format"
+//	@Param		window		query		string	false	"Relative query window such as 5m, 15m, or 1h"
+//	@Param		metric_name	query		string	false	"Optional metric name filter"
+//	@Param		uuid		query		string	false	"Optional GPU UUID filter"
+//	@Param		hostname	query		string	false	"Optional hostname filter"
+//	@Param		gpu_id		query		string	false	"Optional GPU ID filter"
+//	@Param		device		query		string	false	"Optional device filter"
+//	@Param		limit		query		int		false	"Optional result limit"
+//	@Success	200			{object}	TelemetryQueryDocResponse
+//	@Failure	400			{object}	ErrorResponse
+//	@Failure	500			{object}	ErrorResponse
+//	@Router		/telemetry [get]
 func (h *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		h.logger.Warn("reject method", "method", r.Method)

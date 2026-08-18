@@ -9,6 +9,10 @@ import (
 )
 
 func TestOpenAPIHandlerServesSpec(t *testing.T) {
+	original := swaggerSpec
+	swaggerSpec = `{"paths":{"/api/v1/gpus":{},"/api/v1/gpus/{id}/telemetry":{},"/telemetry":{}}}`
+	defer func() { swaggerSpec = original }()
+
 	handler := NewOpenAPIHandler()
 	req := httptest.NewRequest(http.MethodGet, "/openapi.json", nil)
 	recorder := httptest.NewRecorder()
@@ -39,7 +43,7 @@ func TestOpenAPIHandlerServesSpec(t *testing.T) {
 }
 
 func TestSwaggerUIHandlerServesHTML(t *testing.T) {
-	handler := NewSwaggerUIHandler()
+	handler := NewSwaggerUIHandler("/swagger.json")
 	req := httptest.NewRequest(http.MethodGet, "/swagger", nil)
 	recorder := httptest.NewRecorder()
 
@@ -53,7 +57,7 @@ func TestSwaggerUIHandlerServesHTML(t *testing.T) {
 	}
 
 	body := recorder.Body.String()
-	for _, want := range []string{"SwaggerUIBundle", "/openapi.json", "swagger-ui"} {
+	for _, want := range []string{"SwaggerUIBundle", "/swagger.json", "swagger-ui"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected response body to contain %q, got %q", want, body)
 		}
