@@ -66,11 +66,14 @@ Different consumer groups can independently consume the same stream in the futur
 
 ## Kubernetes
 
-Each component is packaged as an independent Helm chart:
+The components are packaged as independent Helm charts:
 
 ```text
 deploy/
 └── helm/
+    ├── api/
+    ├── postgres/
+    ├── processor/
     ├── queue/
     └── streamer/
 ```
@@ -91,6 +94,11 @@ Inside Kubernetes, queue nodes are discovered through the Kubernetes API. Outsid
 Example queue configuration:
 
 ```yaml
+logging:
+  level: info
+  format: text
+  add_source: false
+
 queue:
   data_dir: /var/lib/queue
   partitions: 4
@@ -110,6 +118,8 @@ queue:
 ```
 
 The streamer reads its CSV path from `STREAMER_CSV_PATH` and publishes to the configured queue URL and topic.
+
+Logging is configured once at the top level. Supported levels are `debug`, `info`, `warn`, and `error`. Supported formats are `text` and `json`.
 
 ## Local Development
 
@@ -141,14 +151,16 @@ make push-images IMAGE_TAG=v1
 make push-images IMAGE_REPO_PREFIX=myrepo/gpu-telemetry IMAGE_TAG=v1
 ```
 
-Validate the queue chart:
+Validate the charts:
 
 ```bash
+helm lint ./deploy/helm/postgres ./deploy/helm/queue ./deploy/helm/streamer ./deploy/helm/processor ./deploy/helm/api
+helm template postgres ./deploy/helm/postgres
 helm lint ./deploy/helm/queue
 helm template queue ./deploy/helm/queue
 ```
 
-Repeat for the other component charts.
+Repeat `helm template` for the other charts as needed.
 
 ## Running with Minikube
 
@@ -157,6 +169,12 @@ minikube start
 ```
 
 Build and publish the container images using the configured container registry, then configure the Helm charts to use those images.
+
+Install Postgres first:
+
+```bash
+helm install postgres ./deploy/helm/postgres
+```
 
 Install the queue:
 
@@ -178,6 +196,15 @@ Install the streamer with the PVC-backed CSV mount:
 helm install streamer ./deploy/helm/streamer -f ./deploy/helm/streamer/values.pvc-example.yaml
 ```
 
+Install the processor and API:
+
+```bash
+helm install processor ./deploy/helm/processor
+helm install api ./deploy/helm/api
+```
+
+The default in-cluster database host used by the charts is `postgres-postgres`. Both services read the database connection string from the top-level `database.url` config value, with `PROCESSOR_DATABASE_URL` and `API_DATABASE_URL` available as overrides.
+
 Check the deployment:
 
 ```bash
@@ -198,6 +225,41 @@ For quick in-cluster debugging, start the curl pod:
 kubectl apply -f ./deploy/k8s/debug-curl-pod.yaml
 kubectl exec -it debug-curl -- sh
 ```
+
+From that pod, the main endpoints are:
+
+```bash
+curl http://queue-queue:8080/health
+curl http://queue-queue:8080/stats
+curl http://api-api:8080/health
+curl http://api-api:8080/openapi.json
+curl http://api-api:8080/swagger
+curl http://api-api:8080/api/v1/gpus
+curl "http://api-api:8080/api/v1/gpus/GPU-5fd4f087-86f3-7a43-b711-4771313afc50/telemetry?start_time=2026-08-18T08:00:00Z&end_time=2026-08-18T08:05:00Z"
+```
+
+Deploy Prometheus and Grafana for queue monitoring:
+
+```bash
+kubectl apply -f ./deploy/k8s/monitoring/prometheus.yaml
+kubectl apply -f ./deploy/k8s/monitoring/grafana.yaml
+```
+
+Port-forward the UIs locally:
+
+```bash
+kubectl port-forward svc/prometheus 9090:9090
+kubectl port-forward svc/grafana 3000:3000
+```
+
+Then open:
+
+```text
+Prometheus: http://127.0.0.1:9090
+Grafana: http://127.0.0.1:3000
+```
+
+Grafana defaults to `admin` / `admin` and comes pre-provisioned with the `Queue Overview` dashboard backed by the in-cluster Prometheus service.
 
 ## Queue HTTP API
 
@@ -238,15 +300,34 @@ curl http://queue-queue:8080/metrics
 
 The `/metrics` endpoint exposes Prometheus-format counters and gauges for published, delivered, acked, inflight, partition offsets, consumer offsets, and replication behavior.
 
+Both the queue and API also emit structured request logs with method, path, status, duration, and response size.
+
+The API also serves an OpenAPI document at `/openapi.json` and a Swagger UI page at `/swagger` for interactive testing.
+
+The monitoring manifests under [deploy/k8s/monitoring](/Users/sgopale/Work/shubhindia/gpu-telemetry/deploy/k8s/monitoring) deploy Prometheus to scrape annotated queue pods and Grafana with a ready-made dashboard for queue counters, throughput, inflight messages, replication behavior, and partition offsets.
+
+Query processed telemetry for a time window:
+
+```bash
+curl http://api:8080/api/v1/gpus
+curl "http://api:8080/api/v1/gpus/GPU-5fd4f087-86f3-7a43-b711-4771313afc50/telemetry?start_time=2026-08-18T08:00:00Z&end_time=2026-08-18T08:05:00Z&metric_name=DCGM_FI_DEV_GPU_UTIL&limit=100"
+```
+
+The API exposes `GET /api/v1/gpus` and `GET /api/v1/gpus/{id}/telemetry`, where `{id}` is the GPU UUID. The telemetry query requires `start_time` and `end_time` in RFC3339 format and supports optional filters for `metric_name`, `hostname`, `gpu_id`, `device`, and `limit`.
+
+The older `GET /telemetry` endpoint is still available for compatibility.
+
 Publishing directly to a follower is rejected with `409 Conflict` and `not partition leader`.
 
 ## Persistence and Recovery
 
 Queue data is stored in partition segment files on persistent volumes. Records are persisted to the local segment and queue startup recovery determines the next available offset from persisted records.
 
+Processed telemetry is stored in Postgres using a Prometheus-like split between a deduplicated series table and an append-only samples table. The processor inserts samples after consuming from the queue, and the API reads the stored samples back by time window and label filters.
+
 ## Testing
 
-The project contains unit tests covering queue behavior including partition assignment, partition leadership, persistent segment storage, recovery, replication, replication quorum handling, HTTP replication transport, replication handlers, publish handling, and Kubernetes cluster discovery.
+The project contains unit tests covering queue behavior including partition assignment, partition leadership, persistent segment storage, recovery, replication, replication quorum handling, HTTP replication transport, replication handlers, publish handling, Kubernetes cluster discovery, telemetry replay, processor ack semantics, and API query parsing.
 
 Run the test suite with:
 
@@ -297,16 +378,24 @@ Potential future improvements include:
 
 ```text
 cmd/
+├── api/
+├── processor/
 ├── queue/
 └── streamer/
 
 internal/
+├── api/
 ├── config/
+├── logging/
+├── processor/
 ├── queue/
 └── telemetry/
 
 deploy/
 ├── helm/
+│   ├── api/
+│   ├── postgres/
+│   ├── processor/
 │   ├── queue/
 │   └── streamer/
 └── k8s/
