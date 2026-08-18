@@ -1,5 +1,6 @@
 package queue
 
 type Partition struct {
-	ID int
+	ID       int
+	Replicas []Replica
 }
