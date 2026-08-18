@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "streamer.fullname" . }}
+  labels:
+    {{- include "streamer.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "streamer.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: gpu-telemetry-streamer
+        {{- include "streamer.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: streamer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: STREAMER_CONFIG
+              value: /etc/streamer/config.yaml
+            - name: STREAMER_QUEUE_URL
+              value: {{ .Values.queue.url | quote }}
+            - name: STREAMER_TOPIC
+              value: {{ .Values.queue.topic | quote }}
+            - name: STREAMER_CSV_PATH
+              value: {{ include "streamer.csvPath" . | quote }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/streamer
+              readOnly: true
+            {{- if .Values.csv.existingClaim }}
+            - name: csv
+              mountPath: {{ .Values.csv.mountPath }}
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "streamer.fullname" . }}-config
+        {{- if .Values.csv.existingClaim }}
+        - name: csv
+          persistentVolumeClaim:
+            claimName: {{ .Values.csv.existingClaim }}
+        {{- end }}

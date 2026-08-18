@@ -1,0 +1,8 @@
+queue:
+  url: http://queue-queue:8080
+  topic: gpu
+
+csv:
+  existingClaim: dcgm-metrics-pvc
+  mountPath: /var/lib/streamer
+  fileName: dcgm_metrics_20250718_134233.csv

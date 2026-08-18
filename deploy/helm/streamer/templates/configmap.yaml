@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "streamer.fullname" . }}-config
+  labels:
+    {{- include "streamer.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    queue:
+      data_dir: {{ .Values.config.queue.dataDir }}
+      partitions: {{ .Values.config.queue.partitions }}
+      segment_size_bytes: {{ printf "%d" (int64 .Values.config.queue.segmentSizeBytes) }}
+      replication:
+        factor: {{ .Values.config.queue.replication.factor }}
+        required_follower_acks: {{ .Values.config.queue.replication.requiredFollowerAcks }}
+
+    streamer:
+      spool_dir: {{ .Values.config.streamer.spoolDir }}
+      max_spool_bytes: {{ printf "%d" (int64 .Values.config.streamer.maxSpoolBytes) }}
+      retry_initial: {{ .Values.config.streamer.retryInitial }}
+      retry_max: {{ .Values.config.streamer.retryMax }}
+
+    collector:
+      workers: {{ .Values.config.collector.workers }}
+
+    api:
+      host: {{ .Values.config.api.host }}
+      port: {{ .Values.config.api.port }}
