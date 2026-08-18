@@ -1,5 +1,7 @@
 # GPU Telemetry
 
+![Coverage](docs/badges/coverage.svg)
+
 Distributed GPU telemetry pipeline with a replicated queue, streaming CSV replay, processor-based persistence, query API, and built-in monitoring.
 
 ## Architecture
