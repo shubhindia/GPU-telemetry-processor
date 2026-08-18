@@ -3,9 +3,12 @@ package queue
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/shubhindia/gpu-telemetry/internal/logging"
 )
 
 type Runtime struct {
@@ -16,6 +19,7 @@ type Runtime struct {
 	replication map[int]*ReplicationCoordinator
 	consumers   *consumerState
 	metrics     *QueueMetrics
+	logger      *slog.Logger
 }
 
 type consumerState struct {
@@ -54,6 +58,7 @@ func NewRuntime(
 		router:      router,
 		replication: replication,
 		metrics:     &QueueMetrics{},
+		logger:      logging.Component("queue.runtime"),
 		consumers: &consumerState{
 			subscriptions: make(map[string]*subscriptionState),
 			inflight:      make(map[string]deliveryState),
@@ -76,10 +81,17 @@ func (r *Runtime) Publish(
 		partitions,
 	)
 	if err != nil {
+		r.logger.Warn("route message", "topic", topic, "message_id", message.ID, "err", err)
 		return err
 	}
 
 	if !r.partition.IsLeader(partitionID) {
+		r.logger.Warn(
+			"reject publish on follower",
+			"topic", topic,
+			"message_id", message.ID,
+			"partition", partitionID,
+		)
 		return ErrNotPartitionLeader
 	}
 
@@ -89,9 +101,11 @@ func (r *Runtime) Publish(
 			partitionID,
 			message,
 		); err != nil {
+			r.logger.Error("append message", "topic", topic, "message_id", message.ID, "partition", partitionID, "err", err)
 			return err
 		}
 		r.metrics.Published.Add(1)
+		r.logger.Debug("published message", "topic", topic, "message_id", message.ID, "partition", partitionID)
 		return nil
 	}
 
@@ -102,9 +116,11 @@ func (r *Runtime) Publish(
 			partitionID,
 			message,
 		); err != nil {
+			r.logger.Error("append message", "topic", topic, "message_id", message.ID, "partition", partitionID, "err", err)
 			return err
 		}
 		r.metrics.Published.Add(1)
+		r.logger.Debug("published message", "topic", topic, "message_id", message.ID, "partition", partitionID)
 		return nil
 	}
 
@@ -118,6 +134,7 @@ func (r *Runtime) Publish(
 			Message: message,
 		},
 	); err != nil {
+		r.logger.Warn("replicate message", "topic", topic, "message_id", message.ID, "partition", partitionID, "err", err)
 		return err
 	}
 
@@ -126,10 +143,12 @@ func (r *Runtime) Publish(
 		partitionID,
 		message,
 	); err != nil {
+		r.logger.Error("append message", "topic", topic, "message_id", message.ID, "partition", partitionID, "err", err)
 		return err
 	}
 
 	r.metrics.Published.Add(1)
+	r.logger.Debug("published message", "topic", topic, "message_id", message.ID, "partition", partitionID)
 	return nil
 }
 
@@ -209,10 +228,12 @@ func (r *Runtime) Ack(ctx context.Context, messageID string) error {
 	}
 
 	if err := r.consumers.ack(messageID); err != nil {
+		r.logger.Warn("ack message", "message_id", messageID, "err", err)
 		return err
 	}
 
 	r.metrics.Acked.Add(1)
+	r.logger.Debug("acked message", "message_id", messageID)
 	return nil
 }
 
@@ -289,6 +310,14 @@ func (r *Runtime) pollPartition(
 		}
 
 		r.metrics.Delivered.Add(1)
+		r.logger.Debug(
+			"delivered message",
+			"topic", topic,
+			"partition", partitionID,
+			"offset", offset,
+			"message_id", message.ID,
+			"consumer", consumerKey,
+		)
 
 		return message, true, nil
 	}

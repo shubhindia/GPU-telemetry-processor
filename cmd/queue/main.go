@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,12 +13,14 @@ import (
 	"time"
 
 	"github.com/shubhindia/gpu-telemetry/internal/config"
+	"github.com/shubhindia/gpu-telemetry/internal/logging"
 	q "github.com/shubhindia/gpu-telemetry/internal/queue"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatal(err)
+		slog.Error("process exited", "err", err)
+		os.Exit(1)
 	}
 }
 
@@ -33,6 +35,16 @@ func run() error {
 		return err
 	}
 
+	if err := logging.Configure(logging.Config{
+		Level:     cfg.Logging.Level,
+		Format:    cfg.Logging.Format,
+		AddSource: cfg.Logging.AddSource,
+	}); err != nil {
+		return err
+	}
+
+	logger := logging.Component("queue")
+
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
@@ -40,7 +52,7 @@ func run() error {
 	)
 	defer stop()
 
-	cluster, nodes, err := discoverCluster(ctx, cfg)
+	cluster, nodes, err := discoverCluster(ctx, cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -97,7 +109,7 @@ func run() error {
 
 	defer func() {
 		if err := storage.Close(); err != nil {
-			log.Printf("close storage: %v", err)
+			logger.Warn("close storage", "err", err)
 		}
 	}()
 
@@ -177,19 +189,22 @@ func run() error {
 
 	server := &http.Server{
 		Addr:    ":" + strconv.Itoa(cfg.API.Port),
-		Handler: mux,
+		Handler: logging.Middleware(logging.Component("queue.http"), mux),
 	}
 
 	go func() {
-		log.Printf(
-			"queue node %s listening on %s",
-			localNode.ID,
-			server.Addr,
+		logger.Info(
+			"queue listening",
+			"node_id", localNode.ID,
+			"addr", server.Addr,
+			"nodes", len(nodes),
+			"partitions", cfg.Queue.Partitions,
+			"replication_factor", cfg.Queue.Replication.Factor,
 		)
 
 		if err := server.ListenAndServe(); err != nil &&
 			err != http.ErrServerClosed {
-			log.Printf("HTTP server: %v", err)
+			logger.Error("http server failed", "err", err)
 			stop()
 		}
 	}()
@@ -208,6 +223,7 @@ func run() error {
 func discoverCluster(
 	ctx context.Context,
 	cfg config.Config,
+	logger *slog.Logger,
 ) (q.Cluster, []q.Node, error) {
 	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
 		namespace := os.Getenv("QUEUE_NAMESPACE")
@@ -238,6 +254,14 @@ func discoverCluster(
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
+		logger.Info(
+			"discovering queue cluster from kubernetes",
+			"namespace", namespace,
+			"selector", selector,
+			"service", service,
+			"required_nodes", cfg.Queue.Replication.Factor,
+		)
+
 		for {
 			nodes, err := cluster.Nodes(ctx)
 			if err != nil {
@@ -245,8 +269,15 @@ func discoverCluster(
 			}
 
 			if len(nodes) >= cfg.Queue.Replication.Factor {
+				logger.Info("queue cluster ready", "nodes", len(nodes))
 				return cluster, nodes, nil
 			}
+
+			logger.Debug(
+				"waiting for queue nodes",
+				"discovered_nodes", len(nodes),
+				"required_nodes", cfg.Queue.Replication.Factor,
+			)
 
 			select {
 			case <-ctx.Done():
@@ -267,6 +298,8 @@ func discoverCluster(
 	if err != nil {
 		return nil, nil, err
 	}
+
+	logger.Info("using static queue nodes", "nodes", len(nodes))
 
 	return q.NewStaticCluster(nodes), nodes, nil
 }

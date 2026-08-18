@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/shubhindia/gpu-telemetry/internal/config"
+	"github.com/shubhindia/gpu-telemetry/internal/logging"
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatal(err)
+		slog.Error("process exited", "err", err)
+		os.Exit(1)
 	}
 }
 
@@ -30,6 +32,16 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	if err := logging.Configure(logging.Config{
+		Level:     cfg.Logging.Level,
+		Format:    cfg.Logging.Format,
+		AddSource: cfg.Logging.AddSource,
+	}); err != nil {
+		return err
+	}
+
+	logger := logging.Component("streamer")
 
 	csvPath := os.Getenv("STREAMER_CSV_PATH")
 	if csvPath == "" {
@@ -73,12 +85,12 @@ func run() error {
 	)
 	defer stop()
 
-	log.Printf(
-		"streaming %d telemetry rows from %s to %s on topic %s",
-		len(records),
-		csvPath,
-		queueURL,
-		topic,
+	logger.Info(
+		"starting telemetry stream",
+		"records", len(records),
+		"csv_path", csvPath,
+		"queue_url", queueURL,
+		"topic", topic,
 	)
 
 	return replayer.Stream(ctx, records)

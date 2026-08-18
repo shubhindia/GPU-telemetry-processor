@@ -1,3 +1,11 @@
+logging:
+  level: info
+  format: text
+  add_source: false
+
+database:
+  url: postgres://postgres:postgres@127.0.0.1:5432/gpu_telemetry?sslmode=disable
+
 queue:
   data_dir: ./data/queue
   partitions: 4
@@ -15,6 +23,10 @@ streamer:
 
 collector:
   workers: 2
+
+processor:
+  poll_interval: 250ms
+  retry_interval: 1s
 
 api:
   host: 0.0.0.0

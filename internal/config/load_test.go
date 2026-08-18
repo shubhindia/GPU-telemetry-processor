@@ -13,6 +13,14 @@ func TestLoad(t *testing.T) {
 	path := filepath.Join(dir, "config.yaml")
 
 	config := []byte(`
+logging:
+  level: info
+  format: json
+  add_source: true
+
+database:
+  url: postgres://postgres:postgres@localhost:5432/gpu_telemetry?sslmode=disable
+
 queue:
   data_dir: /tmp/queue
   partitions: 4
@@ -31,6 +39,10 @@ streamer:
 collector:
   workers: 2
 
+processor:
+  poll_interval: 250ms
+  retry_interval: 1s
+
 api:
   host: 0.0.0.0
   port: 8080
@@ -47,6 +59,10 @@ api:
 
 	if cfg.Queue.Partitions != 4 {
 		t.Fatalf("expected 4 partitions, got %d", cfg.Queue.Partitions)
+	}
+
+	if cfg.Logging.Level != "info" || cfg.Logging.Format != "json" || !cfg.Logging.AddSource {
+		t.Fatalf("unexpected logging config: %+v", cfg.Logging)
 	}
 
 	if cfg.Queue.Replication.Factor != 3 {
@@ -73,5 +89,13 @@ api:
 
 	if cfg.API.Port != 8080 {
 		t.Fatalf("expected API port 8080, got %d", cfg.API.Port)
+	}
+
+	if cfg.Database.URL == "" {
+		t.Fatal("expected database url to be loaded")
+	}
+
+	if cfg.Processor.PollInterval != 250*time.Millisecond {
+		t.Fatalf("expected 250ms poll interval, got %s", cfg.Processor.PollInterval)
 	}
 }

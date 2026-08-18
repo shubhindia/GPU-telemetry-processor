@@ -3,8 +3,10 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/shubhindia/gpu-telemetry/internal/logging"
 	"github.com/shubhindia/gpu-telemetry/internal/queue"
 )
 
@@ -13,6 +15,7 @@ type Replayer struct {
 	topic        string
 	retryInitial time.Duration
 	retryMax     time.Duration
+	logger       *slog.Logger
 	now          func() time.Time
 	sleep        func(context.Context, time.Duration) error
 }
@@ -28,6 +31,7 @@ func NewReplayer(
 		topic:        topic,
 		retryInitial: retryInitial,
 		retryMax:     retryMax,
+		logger:       logging.Component("telemetry.replayer"),
 		now:          time.Now,
 		sleep:        sleep,
 	}
@@ -41,6 +45,8 @@ func (r *Replayer) Stream(ctx context.Context, records []Record) error {
 	var sequence uint64
 
 	for {
+		r.logger.Debug("starting replay cycle", "topic", r.topic, "records", len(records))
+
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -64,6 +70,7 @@ func (r *Replayer) publishWithRetry(
 	sequence uint64,
 ) error {
 	backoff := r.retryInitial
+	attempt := 0
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -77,11 +84,31 @@ func (r *Replayer) publishWithRetry(
 		}
 
 		if err := r.producer.Publish(ctx, r.topic, message); err == nil {
+			if attempt > 0 {
+				r.logger.Info(
+					"publish recovered after retry",
+					"topic", r.topic,
+					"message_id", message.ID,
+					"attempts", attempt,
+				)
+			}
 			return nil
 		} else if ctx.Err() != nil {
 			return ctx.Err()
-		} else if err := r.sleep(ctx, backoff); err != nil {
-			return err
+		} else {
+			attempt++
+			r.logger.Warn(
+				"publish failed, retrying",
+				"topic", r.topic,
+				"message_id", message.ID,
+				"attempt", attempt,
+				"backoff", backoff,
+				"err", err,
+			)
+
+			if err := r.sleep(ctx, backoff); err != nil {
+				return err
+			}
 		}
 
 		backoff *= 2

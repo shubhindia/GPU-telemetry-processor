@@ -26,6 +26,22 @@ func Load(path string) (Config, error) {
 }
 
 func (c Config) Validate() error {
+	switch c.Logging.normalizedLevel() {
+	case "", "debug", "info", "warn", "error":
+	default:
+		return fmt.Errorf("logging level must be one of debug, info, warn, or error")
+	}
+
+	switch c.Logging.normalizedFormat() {
+	case "", "text", "json":
+	default:
+		return fmt.Errorf("logging format must be one of text or json")
+	}
+
+	if c.Database.URL == "" {
+		return fmt.Errorf("database url is required")
+	}
+
 	if c.Queue.DataDir == "" {
 		return fmt.Errorf("queue data directory is required")
 	}
@@ -68,6 +84,13 @@ func (c Config) Validate() error {
 
 	if c.Collector.Workers <= 0 {
 		return fmt.Errorf("collector workers must be greater than zero")
+	}
+
+	if c.Processor.PollInterval <= 0 {
+		return fmt.Errorf("processor poll interval must be greater than zero")
+	}
+	if c.Processor.RetryInterval <= 0 {
+		return fmt.Errorf("processor retry interval must be greater than zero")
 	}
 
 	if c.API.Host == "" {
