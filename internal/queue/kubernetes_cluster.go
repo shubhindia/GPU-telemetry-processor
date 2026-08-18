@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -77,6 +78,9 @@ func (c *KubernetesCluster) Nodes(
 		if pod.DeletionTimestamp != nil {
 			continue
 		}
+		if !podDiscoverable(pod) {
+			continue
+		}
 
 		nodes = append(nodes, Node{
 			ID: pod.Name,
@@ -95,4 +99,8 @@ func (c *KubernetesCluster) Nodes(
 	})
 
 	return nodes, nil
+}
+
+func podDiscoverable(pod corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodRunning
 }

@@ -1,4 +1,4 @@
-replicaCount: 1
+replicaCount: 3
 
 image:
   repository: shubhindia/gpu-telemetry-queue
@@ -18,8 +18,8 @@ queue:
   segmentSizeBytes: "67108864"
 
   replication:
-    factor: 1
-    requiredFollowerAcks: 0
+    factor: 3
+    requiredFollowerAcks: 1
 
 storage:
   size: 1Gi

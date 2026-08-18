@@ -9,4 +9,5 @@ var (
 	ErrNotPartitionLeader = errors.New("not partition leader")
 	ErrUnexpectedOffset   = errors.New("unexpected record offset")
 	ErrNoNodes            = errors.New("no queue nodes available")
+	ErrLeaderNotFound     = errors.New("partition leader not found")
 )

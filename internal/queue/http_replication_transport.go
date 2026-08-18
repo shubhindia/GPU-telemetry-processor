@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -63,14 +64,22 @@ func (t *HTTPReplicationTransport) Replicate(
 
 	resp, err := t.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("send replication request: %w", err)
+		return fmt.Errorf("send replication request to %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		message := strings.TrimSpace(string(body))
+		if message == "" {
+			message = http.StatusText(resp.StatusCode)
+		}
+
 		return fmt.Errorf(
-			"replication request failed with status %d",
-			resp.StatusCode,
+			"replication request to %s failed: %s: %s",
+			url,
+			resp.Status,
+			message,
 		)
 	}
 

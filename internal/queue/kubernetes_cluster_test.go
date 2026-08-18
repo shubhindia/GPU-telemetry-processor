@@ -19,6 +19,13 @@ func TestKubernetesClusterNodes(t *testing.T) {
 					"app": "gpu-telemetry-queue",
 				},
 			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionTrue,
+				}},
+			},
 		},
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -27,6 +34,29 @@ func TestKubernetesClusterNodes(t *testing.T) {
 				Labels: map[string]string{
 					"app": "gpu-telemetry-queue",
 				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				Conditions: []corev1.PodCondition{{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "queue-2",
+				Namespace: "default",
+				Labels: map[string]string{
+					"app": "gpu-telemetry-queue",
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodPending,
+				Conditions: []corev1.PodCondition{{
+					Type:   corev1.PodReady,
+					Status: corev1.ConditionFalse,
+				}},
 			},
 		},
 		&corev1.Pod{

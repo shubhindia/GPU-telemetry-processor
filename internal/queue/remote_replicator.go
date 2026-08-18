@@ -1,6 +1,9 @@
 package queue
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 type RemoteReplicator struct {
 	node      Node
@@ -22,10 +25,14 @@ func (r *RemoteReplicator) Replicate(
 	partitionID int,
 	record Record,
 ) error {
-	return r.transport.Replicate(
+	if err := r.transport.Replicate(
 		ctx,
 		r.node,
 		partitionID,
 		record,
-	)
+	); err != nil {
+		return fmt.Errorf("replicate to node %s: %w", r.node.ID, err)
+	}
+
+	return nil
 }

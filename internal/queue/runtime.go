@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -73,13 +74,7 @@ func (r *Runtime) Publish(
 ) error {
 	message.Topic = topic
 
-	partitions := r.partition.Partitions()
-
-	partitionID, err := r.router.Route(
-		topic,
-		message,
-		partitions,
-	)
+	partitionID, err := r.routePartition(topic, message)
 	if err != nil {
 		r.logger.Warn("route message", "topic", topic, "message_id", message.ID, "err", err)
 		return err
@@ -150,6 +145,45 @@ func (r *Runtime) Publish(
 	r.metrics.Published.Add(1)
 	r.logger.Debug("published message", "topic", topic, "message_id", message.ID, "partition", partitionID)
 	return nil
+}
+
+func (r *Runtime) PartitionLeader(
+	ctx context.Context,
+	topic string,
+	message Message,
+) (Node, int, bool, error) {
+	message.Topic = topic
+
+	partitionID, err := r.routePartition(topic, message)
+	if err != nil {
+		return Node{}, 0, false, err
+	}
+
+	if r.partition.IsLeader(partitionID) {
+		return r.partition.LocalNode(), partitionID, true, nil
+	}
+
+	leaderID, ok := r.partition.LeaderNodeID(partitionID)
+	if !ok {
+		return Node{}, partitionID, false, ErrLeaderNotFound
+	}
+
+	nodes, err := r.cluster.Nodes(ctx)
+	if err != nil {
+		return Node{}, partitionID, false, err
+	}
+
+	for _, node := range nodes {
+		if node.ID == leaderID {
+			return node, partitionID, false, nil
+		}
+	}
+
+	return Node{}, partitionID, false, ErrLeaderNotFound
+}
+
+func (r *Runtime) routePartition(topic string, message Message) (int, error) {
+	return r.router.Route(topic, message, r.partition.Partitions())
 }
 
 func (r *Runtime) Consume(
@@ -288,7 +322,7 @@ func (r *Runtime) pollPartition(
 
 		message, err := r.storage.Read(ctx, partitionID, offset)
 		if err != nil {
-			if err == ErrOffsetNotFound {
+			if errors.Is(err, ErrOffsetNotFound) {
 				return Message{}, false, nil
 			}
 
