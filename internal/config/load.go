@@ -35,6 +35,22 @@ func (c Config) Validate() error {
 	if c.Queue.SegmentSizeBytes <= 0 {
 		return fmt.Errorf("queue segment size must be greater than zero")
 	}
+	if c.Queue.Replication.Factor <= 0 {
+		return fmt.Errorf("queue replication factor must be greater than zero")
+	}
+
+	if c.Queue.Replication.Factor > 1 &&
+		c.Queue.Replication.RequiredFollowerAcks <= 0 {
+		return fmt.Errorf(
+			"queue required follower acknowledgements must be greater than zero when replication is enabled",
+		)
+	}
+
+	if c.Queue.Replication.RequiredFollowerAcks >= c.Queue.Replication.Factor {
+		return fmt.Errorf(
+			"queue required follower acknowledgements must be less than replication factor",
+		)
+	}
 
 	if c.Streamer.SpoolDir == "" {
 		return fmt.Errorf("streamer spool directory is required")

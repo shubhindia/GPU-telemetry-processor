@@ -2,9 +2,10 @@ package queue
 
 import "context"
 
-type Replicator interface {
+type ReplicationTransport interface {
 	Replicate(
 		ctx context.Context,
+		node Node,
 		partitionID int,
 		record Record,
 	) error

@@ -10,9 +10,15 @@ type Config struct {
 }
 
 type QueueConfig struct {
-	DataDir          string `yaml:"data_dir"`
-	Partitions       int    `yaml:"partitions"`
-	SegmentSizeBytes int64  `yaml:"segment_size_bytes"`
+	DataDir          string            `yaml:"data_dir"`
+	Partitions       int               `yaml:"partitions"`
+	SegmentSizeBytes int64             `yaml:"segment_size_bytes"`
+	Replication      ReplicationConfig `yaml:"replication"`
+}
+
+type ReplicationConfig struct {
+	Factor               int `yaml:"factor"`
+	RequiredFollowerAcks int `yaml:"required_follower_acks"`
 }
 
 type StreamerConfig struct {

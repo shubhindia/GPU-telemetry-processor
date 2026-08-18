@@ -17,6 +17,9 @@ queue:
   data_dir: /tmp/queue
   partitions: 4
   segment_size_bytes: 67108864
+  replication:
+    factor: 3
+    required_follower_acks: 2
 
 streamer:
   spool_dir: /tmp/spool
@@ -43,6 +46,20 @@ api:
 
 	if cfg.Queue.Partitions != 4 {
 		t.Fatalf("expected 4 partitions, got %d", cfg.Queue.Partitions)
+	}
+
+	if cfg.Queue.Replication.Factor != 3 {
+		t.Fatalf(
+			"expected replication factor 3, got %d",
+			cfg.Queue.Replication.Factor,
+		)
+	}
+
+	if cfg.Queue.Replication.RequiredFollowerAcks != 2 {
+		t.Fatalf(
+			"expected 2 required follower acks, got %d",
+			cfg.Queue.Replication.RequiredFollowerAcks,
+		)
 	}
 
 	if cfg.Streamer.RetryInitial != time.Second {

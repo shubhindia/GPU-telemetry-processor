@@ -24,7 +24,9 @@ type partitionState struct {
 }
 
 type QueueConfig struct {
-	SegmentSizeBytes int64
+	SegmentSizeBytes     int64
+	ReplicationFactor    int
+	RequiredFollowerAcks int
 }
 
 func NewPartitionStore(dataDir string, config QueueConfig) *PartitionStore {
@@ -213,7 +215,8 @@ func (s *PartitionStore) AppendRecord(
 
 	if record.Offset != state.nextOffset {
 		return fmt.Errorf(
-			"unexpected offset for partition %d: expected %d, got %d",
+			"%w for partition %d: expected %d, got %d",
+			ErrUnexpectedOffset,
 			partitionID,
 			state.nextOffset,
 			record.Offset,
