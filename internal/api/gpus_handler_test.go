@@ -103,3 +103,33 @@ func TestGPUsHandlerRequiresTimeWindowForTelemetry(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, recorder.Code)
 	}
 }
+
+func TestGPUsHandlerSupportsRelativeWindow(t *testing.T) {
+	originalNow := nowFunc
+	nowFunc = func() time.Time { return time.Date(2026, 8, 18, 8, 5, 0, 0, time.UTC) }
+	defer func() { nowFunc = originalNow }()
+
+	store := &gpusTestStore{}
+	handler := NewGPUsHandler(store)
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/gpus/GPU-1/telemetry?window=5m&metric_name=gpu_util",
+		nil,
+	)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if store.query.UUID != "GPU-1" {
+		t.Fatalf("unexpected gpu id: %+v", store.query)
+	}
+	if !store.query.Start.Equal(time.Date(2026, 8, 18, 8, 0, 0, 0, time.UTC)) {
+		t.Fatalf("unexpected start: %v", store.query.Start)
+	}
+	if !store.query.End.Equal(time.Date(2026, 8, 18, 8, 5, 0, 0, time.UTC)) {
+		t.Fatalf("unexpected end: %v", store.query.End)
+	}
+}

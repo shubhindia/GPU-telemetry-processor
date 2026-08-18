@@ -244,22 +244,31 @@
             }
           },
           {
-            "description": "Start of the query window in RFC3339 format.",
+            "description": "Start of the query window in RFC3339 format. Required with end_time unless window is provided.",
             "in": "query",
             "name": "start_time",
-            "required": true,
+            "required": false,
             "schema": {
               "format": "date-time",
               "type": "string"
             }
           },
           {
-            "description": "End of the query window in RFC3339 format.",
+            "description": "End of the query window in RFC3339 format. Optional with window and defaults to now.",
             "in": "query",
             "name": "end_time",
-            "required": true,
+            "required": false,
             "schema": {
               "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Relative query window such as 5m, 15m, or 1h. Cannot be combined with start_time.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
               "type": "string"
             }
           },
@@ -348,22 +357,31 @@
         "operationId": "listTelemetry",
         "parameters": [
           {
-            "description": "Start of the query window in RFC3339 format.",
+            "description": "Start of the query window in RFC3339 format. Required with end unless window is provided.",
             "in": "query",
             "name": "start",
-            "required": true,
+            "required": false,
             "schema": {
               "format": "date-time",
               "type": "string"
             }
           },
           {
-            "description": "End of the query window in RFC3339 format.",
+            "description": "End of the query window in RFC3339 format. Optional with window and defaults to now.",
             "in": "query",
             "name": "end",
-            "required": true,
+            "required": false,
             "schema": {
               "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Relative query window such as 5m, 15m, or 1h. Cannot be combined with start.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
               "type": "string"
             }
           },

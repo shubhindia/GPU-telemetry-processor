@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -67,7 +68,7 @@ func (c *HTTPClient) Consume(
 		return queue.Message{}, false, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return queue.Message{}, false, fmt.Errorf("consume request failed with status %d", resp.StatusCode)
+		return queue.Message{}, false, unexpectedStatusError("consume request", resp)
 	}
 
 	var payload struct {
@@ -117,8 +118,21 @@ func (c *HTTPClient) Ack(ctx context.Context, messageID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("ack request failed with status %d", resp.StatusCode)
+		return unexpectedStatusError("ack request", resp)
 	}
 
 	return nil
+}
+
+func unexpectedStatusError(operation string, resp *http.Response) error {
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return fmt.Errorf("%s failed with status %d (read body: %w)", operation, resp.StatusCode, err)
+	}
+
+	if len(body) == 0 {
+		return fmt.Errorf("%s failed with status %d", operation, resp.StatusCode)
+	}
+
+	return fmt.Errorf("%s failed with status %d: %s", operation, resp.StatusCode, bytes.TrimSpace(body))
 }

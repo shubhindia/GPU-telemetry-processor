@@ -3,11 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/shubhindia/gpu-telemetry/internal/logging"
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
@@ -36,28 +33,18 @@ func (h *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	start, err := parseRequiredTime(r, "start")
+	start, end, err := parseTimeWindow(r, "start", "", "end", "")
 	if err != nil {
-		h.logger.Warn("invalid start parameter", "err", err)
+		h.logger.Warn("invalid time window", "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	end, err := parseRequiredTime(r, "end")
+	limit, err := parseLimit(r)
 	if err != nil {
-		h.logger.Warn("invalid end parameter", "err", err)
+		h.logger.Warn("invalid limit parameter", "limit", r.URL.Query().Get("limit"))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-
-	limit := 0
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		limit, err = strconv.Atoi(raw)
-		if err != nil || limit < 0 {
-			h.logger.Warn("invalid limit parameter", "limit", raw)
-			http.Error(w, "limit must be a non-negative integer", http.StatusBadRequest)
-			return
-		}
 	}
 
 	results, err := h.store.Query(r.Context(), telemetry.Query{
@@ -97,18 +84,4 @@ func (h *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func parseRequiredTime(r *http.Request, name string) (time.Time, error) {
-	value := r.URL.Query().Get(name)
-	if value == "" {
-		return time.Time{}, fmt.Errorf("%s is required", name)
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%s must be RFC3339", name)
-	}
-
-	return timestamp, nil
 }

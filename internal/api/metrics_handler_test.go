@@ -83,3 +83,42 @@ func TestMetricsHandlerReturnsFilteredResults(t *testing.T) {
 		t.Fatalf("unexpected response: %+v", response.Items)
 	}
 }
+
+func TestMetricsHandlerSupportsRelativeWindow(t *testing.T) {
+	originalNow := nowFunc
+	nowFunc = func() time.Time { return time.Date(2026, 8, 18, 8, 5, 0, 0, time.UTC) }
+	defer func() { nowFunc = originalNow }()
+
+	store := &metricsTestStore{}
+	handler := NewMetricsHandler(store)
+	req := httptest.NewRequest(http.MethodGet, "/telemetry?window=5m&uuid=GPU-1", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+	if !store.query.Start.Equal(time.Date(2026, 8, 18, 8, 0, 0, 0, time.UTC)) {
+		t.Fatalf("unexpected start: %v", store.query.Start)
+	}
+	if !store.query.End.Equal(time.Date(2026, 8, 18, 8, 5, 0, 0, time.UTC)) {
+		t.Fatalf("unexpected end: %v", store.query.End)
+	}
+}
+
+func TestMetricsHandlerRejectsStartWithWindow(t *testing.T) {
+	handler := NewMetricsHandler(&metricsTestStore{})
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/telemetry?start=2026-08-18T08:00:00Z&window=5m",
+		nil,
+	)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, recorder.Code)
+	}
+}

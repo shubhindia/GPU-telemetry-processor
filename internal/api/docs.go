@@ -97,8 +97,9 @@ func OpenAPISpec() map[string]any {
 			"/api/v1/gpus/{id}/telemetry": map[string]any{
 				"get": operationSpec("Query telemetry for a GPU", "listGPUTelemetry", []map[string]any{
 					pathParameter("id", "GPU UUID."),
-					dateTimeParameter("start_time", true, "Start of the query window in RFC3339 format."),
-					dateTimeParameter("end_time", true, "End of the query window in RFC3339 format."),
+					dateTimeParameter("start_time", false, "Start of the query window in RFC3339 format. Required with end_time unless window is provided."),
+					dateTimeParameter("end_time", false, "End of the query window in RFC3339 format. Optional with window and defaults to now."),
+					stringParameter("window", false, "query", "Relative query window such as 5m, 15m, or 1h. Cannot be combined with start_time."),
 					stringParameter("metric_name", false, "query", "Optional metric name filter."),
 					stringParameter("hostname", false, "query", "Optional hostname filter."),
 					stringParameter("gpu_id", false, "query", "Optional GPU ID filter."),
@@ -112,8 +113,9 @@ func OpenAPISpec() map[string]any {
 			},
 			"/telemetry": map[string]any{
 				"get": deprecatedOperationSpec("Query telemetry samples", "listTelemetry", []map[string]any{
-					dateTimeParameter("start", true, "Start of the query window in RFC3339 format."),
-					dateTimeParameter("end", true, "End of the query window in RFC3339 format."),
+					dateTimeParameter("start", false, "Start of the query window in RFC3339 format. Required with end unless window is provided."),
+					dateTimeParameter("end", false, "End of the query window in RFC3339 format. Optional with window and defaults to now."),
+					stringParameter("window", false, "query", "Relative query window such as 5m, 15m, or 1h. Cannot be combined with start."),
 					stringParameter("metric_name", false, "query", "Optional metric name filter."),
 					stringParameter("uuid", false, "query", "Optional GPU UUID filter."),
 					stringParameter("hostname", false, "query", "Optional hostname filter."),

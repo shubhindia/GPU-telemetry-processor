@@ -83,6 +83,8 @@ func run() error {
 	}
 
 	runner := processor.NewRunner(client, store, topic, group)
+	idleLogInterval := 30 * time.Second
+	nextIdleLog := time.Now().Add(idleLogInterval)
 
 	ctx, stop := signal.NotifyContext(
 		context.Background(),
@@ -96,6 +98,8 @@ func run() error {
 		"topic", topic,
 		"group", group,
 		"queue_url", queueURL,
+		"poll_interval", cfg.Processor.PollInterval,
+		"retry_interval", cfg.Processor.RetryInterval,
 	)
 
 	for {
@@ -113,7 +117,18 @@ func run() error {
 		}
 
 		if processed {
+			nextIdleLog = time.Now().Add(idleLogInterval)
 			continue
+		}
+
+		if time.Now().After(nextIdleLog) {
+			logger.Info(
+				"processor idle",
+				"topic", topic,
+				"group", group,
+				"poll_interval", cfg.Processor.PollInterval,
+			)
+			nextIdleLog = time.Now().Add(idleLogInterval)
 		}
 
 		if err := sleepContext(ctx, cfg.Processor.PollInterval); err != nil {

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/shubhindia/gpu-telemetry/internal/logging"
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
@@ -73,16 +72,9 @@ func (h *GPUsHandler) listGPUs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GPUsHandler) gpuTelemetry(w http.ResponseWriter, r *http.Request, gpuID string) {
-	start, err := parseTimeAlias(r, "start_time", "start")
+	start, end, err := parseTimeWindow(r, "start_time", "start", "end_time", "end")
 	if err != nil {
-		h.logger.Warn("invalid start parameter", "gpu_id", gpuID, "err", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	end, err := parseTimeAlias(r, "end_time", "end")
-	if err != nil {
-		h.logger.Warn("invalid end parameter", "gpu_id", gpuID, "err", err)
+		h.logger.Warn("invalid time window", "gpu_id", gpuID, "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -123,23 +115,6 @@ func (h *GPUsHandler) gpuTelemetry(w http.ResponseWriter, r *http.Request, gpuID
 		h.logger.Error("encode gpu telemetry response", "gpu_id", gpuID, "err", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-}
-
-func parseTimeAlias(r *http.Request, primary string, fallback string) (time.Time, error) {
-	value := r.URL.Query().Get(primary)
-	if value == "" {
-		value = r.URL.Query().Get(fallback)
-	}
-	if value == "" {
-		return time.Time{}, fmt.Errorf("%s is required", primary)
-	}
-
-	timestamp, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%s must be RFC3339", primary)
-	}
-
-	return timestamp, nil
 }
 
 func parseLimit(r *http.Request) (int, error) {

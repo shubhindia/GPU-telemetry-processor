@@ -84,7 +84,18 @@ func (r *Runner) RunOnce(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	r.logger.Debug("acked processed message", "message_id", message.ID)
+	r.logger.Info(
+		"processed telemetry",
+		"topic", r.topic,
+		"group", r.group,
+		"message_id", message.ID,
+		"routing_key", message.RoutingKey,
+		"metric_name", record.MetricName,
+		"uuid", record.UUID,
+		"gpu_id", record.GPUID,
+		"hostname", record.Hostname,
+		"timestamp", record.Timestamp,
+	)
 
 	return true, nil
 }
