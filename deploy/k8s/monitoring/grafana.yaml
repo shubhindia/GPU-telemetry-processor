@@ -49,7 +49,7 @@ data:
           "id": 1,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
           "targets": [{"expr": "sum(queue_messages_published_total)", "refId": "A"}],
-          "title": "Published Total",
+          "title": "Cluster Published Total",
           "type": "stat"
         },
         {
@@ -59,7 +59,7 @@ data:
           "id": 2,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
           "targets": [{"expr": "sum(queue_messages_delivered_total)", "refId": "A"}],
-          "title": "Delivered Total",
+          "title": "Cluster Delivered Total",
           "type": "stat"
         },
         {
@@ -69,17 +69,17 @@ data:
           "id": 3,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
           "targets": [{"expr": "sum(queue_messages_acked_total)", "refId": "A"}],
-          "title": "Acked Total",
+          "title": "Cluster Acked Total",
           "type": "stat"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 10}]}}},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.001}, {"color": "red", "value": 0.01}]}, "unit": "ops"}},
           "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
           "id": 4,
           "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
-          "targets": [{"expr": "sum(queue_inflight_messages)", "refId": "A"}],
-          "title": "Inflight Messages",
+          "targets": [{"expr": "sum(rate(queue_replication_quorum_failures_total[5m]))", "refId": "A"}],
+          "title": "Quorum Failures/s",
           "type": "stat"
         },
         {
@@ -92,7 +92,7 @@ data:
             {"expr": "sum(rate(queue_messages_delivered_total[1m]))", "legendFormat": "delivered", "refId": "B"},
             {"expr": "sum(rate(queue_messages_acked_total[1m]))", "legendFormat": "acked", "refId": "C"}
           ],
-          "title": "Queue Throughput",
+          "title": "Cluster Queue Throughput",
           "type": "timeseries"
         },
         {
@@ -102,10 +102,11 @@ data:
           "id": 6,
           "targets": [
             {"expr": "sum(rate(queue_replication_attempts_total[5m]))", "legendFormat": "attempts/s", "refId": "A"},
-            {"expr": "sum(rate(queue_replication_failures_total[5m]))", "legendFormat": "failures/s", "refId": "B"},
-            {"expr": "sum(rate(queue_replication_quorum_failures_total[5m]))", "legendFormat": "quorum failures/s", "refId": "C"}
+            {"expr": "sum(rate(queue_replication_successes_total[5m]))", "legendFormat": "successes/s", "refId": "B"},
+            {"expr": "sum(rate(queue_replication_failures_total[5m]))", "legendFormat": "failures/s", "refId": "C"},
+            {"expr": "sum(rate(queue_replication_quorum_failures_total[5m]))", "legendFormat": "quorum failures/s", "refId": "D"}
           ],
-          "title": "Replication Activity",
+          "title": "Cluster Replication Activity",
           "type": "timeseries"
         },
         {
@@ -113,8 +114,8 @@ data:
           "fieldConfig": {"defaults": {"unit": "short"}},
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
           "id": 7,
-          "targets": [{"expr": "queue_partition_next_offset", "legendFormat": "partition {{partition}} ({{role}})", "refId": "A"}],
-          "title": "Partition Offsets",
+          "targets": [{"expr": "queue_partition_next_offset", "legendFormat": "{{instance}} p{{partition}} {{role}}", "refId": "A"}],
+          "title": "Replica Offsets By Pod",
           "type": "timeseries"
         },
         {
@@ -127,6 +128,31 @@ data:
             {"expr": "queue_consumer_inflight", "legendFormat": "{{group}} p{{partition}} inflight", "refId": "B"}
           ],
           "title": "Consumer Progress",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "id": 9,
+          "targets": [
+            {"expr": "rate(queue_messages_published_total[1m])", "legendFormat": "{{instance}} published/s", "refId": "A"},
+            {"expr": "rate(queue_messages_delivered_total[1m])", "legendFormat": "{{instance}} delivered/s", "refId": "B"}
+          ],
+          "title": "Per-Pod Queue Throughput",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "id": 10,
+          "targets": [
+            {"expr": "rate(queue_replication_attempts_total[5m])", "legendFormat": "{{instance}} attempts/s", "refId": "A"},
+            {"expr": "rate(queue_replication_successes_total[5m])", "legendFormat": "{{instance}} successes/s", "refId": "B"},
+            {"expr": "rate(queue_replication_failures_total[5m])", "legendFormat": "{{instance}} failures/s", "refId": "C"}
+          ],
+          "title": "Per-Pod Replication Activity",
           "type": "timeseries"
         }
       ],
