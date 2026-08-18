@@ -194,6 +194,47 @@ func (s *PartitionStore) Close() error {
 	return nil
 }
 
+func (s *PartitionStore) AppendRecord(
+	ctx context.Context,
+	partitionID int,
+	record Record,
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	state, exists := s.states[partitionID]
+	if !exists {
+		return fmt.Errorf("partition %d is not open", partitionID)
+	}
+
+	if record.Offset != state.nextOffset {
+		return fmt.Errorf(
+			"unexpected offset for partition %d: expected %d, got %d",
+			partitionID,
+			state.nextOffset,
+			record.Offset,
+		)
+	}
+
+	segment := s.segments[partitionID][state.currentSegmentID]
+
+	if err := segment.Append(record); err != nil {
+		return fmt.Errorf(
+			"append record to partition %d: %w",
+			partitionID,
+			err,
+		)
+	}
+
+	state.nextOffset++
+
+	return nil
+}
+
 func (s *PartitionStore) segmentPath(
 	partitionID int,
 	segmentID uint64,
