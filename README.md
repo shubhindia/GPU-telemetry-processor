@@ -85,8 +85,9 @@ Then open:
 - API OpenAPI: [http://127.0.0.1:8080/openapi.json](http://127.0.0.1:8080/openapi.json)
 - GPU list: [http://127.0.0.1:8080/api/v1/gpus](http://127.0.0.1:8080/api/v1/gpus)
 - Grafana: [http://127.0.0.1:3000](http://127.0.0.1:3000) (`admin:admin`)
+- Queue Dashboard: [http://127.0.0.1:3000/d/gpu-telemetry-queue/queue-overview?orgId=1&refresh=10s](http://127.0.0.1:3000/d/gpu-telemetry-queue/queue-overview?orgId=1&refresh=10s)
 
-Grafana defaults to `admin:admin` and is preloaded with the `Queue Overview` dashboard.
+Grafana defaults to `admin:admin`, and the direct dashboard link above opens the preloaded `Queue Overview` dashboard immediately.
 Prometheus is installed as Grafana's data source, but direct access is only needed for debugging.
 
 ## Sample Workflow
