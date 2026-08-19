@@ -220,6 +220,79 @@ data:
           ],
           "title": "Per-Pod Processor Throughput",
           "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 40},
+          "id": 17,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(api_http_requests_total)", "refId": "A"}],
+          "title": "API Requests Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "ops"}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 40},
+          "id": 18,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(rate(api_http_requests_total[1m]))", "refId": "A"}],
+          "title": "API Requests/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.001}, {"color": "red", "value": 0.01}]}, "unit": "ops"}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 40},
+          "id": 19,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(rate(api_http_requests_total{status=~\"5..\"}[5m]))", "refId": "A"}],
+          "title": "API 5xx/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.1}, {"color": "red", "value": 0.5}]}, "unit": "s"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 40},
+          "id": 20,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(api_http_request_duration_seconds_bucket[5m])))", "refId": "A"}],
+          "title": "API P95 Latency",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
+          "id": 21,
+          "targets": [
+            {"expr": "sum(rate(api_http_requests_total[1m])) by (status)", "legendFormat": "{{status}}", "refId": "A"}
+          ],
+          "title": "API Request Rate By Status",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 44},
+          "id": 22,
+          "targets": [
+            {"expr": "sum(rate(api_http_requests_total[1m])) by (path)", "legendFormat": "{{path}}", "refId": "A"}
+          ],
+          "title": "API Request Rate By Path",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "s"}},
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 52},
+          "id": 23,
+          "targets": [
+            {"expr": "histogram_quantile(0.95, sum by (le, path) (rate(api_http_request_duration_seconds_bucket[5m])))", "legendFormat": "{{path}} p95", "refId": "A"}
+          ],
+          "title": "API P95 Latency By Path",
+          "type": "timeseries"
         }
       ],
       "refresh": "10s",

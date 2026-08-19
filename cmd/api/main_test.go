@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	internalapi "github.com/shubhindia/gpu-telemetry/internal/api"
+	"github.com/shubhindia/gpu-telemetry/internal/logging"
 	"github.com/shubhindia/gpu-telemetry/internal/telemetry"
 )
 
@@ -26,7 +28,7 @@ func (apiTestStore) Query(context.Context, telemetry.Query) ([]telemetry.SampleR
 }
 
 func TestNewMuxRegistersHealthAndDocsEndpoints(t *testing.T) {
-	mux := newMux(apiTestStore{})
+	mux := newMux(apiTestStore{}, nil)
 
 	tests := []struct {
 		name string
@@ -34,6 +36,7 @@ func TestNewMuxRegistersHealthAndDocsEndpoints(t *testing.T) {
 		want int
 	}{
 		{name: "health", path: "/health", want: http.StatusOK},
+		{name: "metrics", path: "/metrics", want: http.StatusOK},
 		{name: "openapi", path: "/openapi.json", want: http.StatusOK},
 		{name: "swagger json", path: "/swagger.json", want: http.StatusOK},
 		{name: "swagger ui", path: "/swagger", want: http.StatusOK},
@@ -48,6 +51,41 @@ func TestNewMuxRegistersHealthAndDocsEndpoints(t *testing.T) {
 			mux.ServeHTTP(rec, req)
 			if rec.Code != tc.want {
 				t.Fatalf("status = %d, want %d", rec.Code, tc.want)
+			}
+		})
+	}
+}
+
+func TestInstrumentedHandlerServesAPIResponses(t *testing.T) {
+	metrics := internalapi.NewHTTPMetrics()
+	handler := logging.Middleware(logging.Component("test.api"), metrics.Middleware(newMux(apiTestStore{}, metrics)))
+
+	tests := []struct {
+		name         string
+		path         string
+		want         int
+		wantContains string
+		notContains  string
+	}{
+		{name: "gpu list", path: "/api/v1/gpus", want: http.StatusOK, wantContains: `"items":[{"id":"GPU-1"`},
+		{name: "gpu telemetry", path: "/api/v1/gpus/GPU-1/telemetry?window=5m", want: http.StatusOK, wantContains: `"gpu_id":"GPU-1"`},
+		{name: "metrics", path: "/metrics", want: http.StatusOK, wantContains: `api_http_requests_total`, notContains: `/metrics`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != tc.want {
+				t.Fatalf("status = %d, want %d", rec.Code, tc.want)
+			}
+			if !strings.Contains(rec.Body.String(), tc.wantContains) {
+				t.Fatalf("expected body to contain %q, got %q", tc.wantContains, rec.Body.String())
+			}
+			if tc.notContains != "" && strings.Contains(rec.Body.String(), tc.notContains) {
+				t.Fatalf("did not expect body to contain %q, got %q", tc.notContains, rec.Body.String())
 			}
 		})
 	}

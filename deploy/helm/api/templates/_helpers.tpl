@@ -3,7 +3,7 @@
 {{- end }}
 
 {{- define "api.fullname" -}}
-{{- printf "%s-%s" .Release.Name (include "api.name" .) | trunc 63 | trimSuffix "-" -}}
+  {{- printf "%s-%s" .Release.Name (include "api.name" .) | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{- define "api.labels" -}}

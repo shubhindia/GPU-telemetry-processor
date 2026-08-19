@@ -76,9 +76,12 @@ func run() error {
 	)
 	defer stop()
 
+	metrics := internalapi.NewHTTPMetrics()
+	mux := newMux(store, metrics)
+
 	server := &http.Server{
 		Addr:    cfg.API.Host + ":" + strconv.Itoa(cfg.API.Port),
-		Handler: logging.Middleware(logging.Component("api.http"), newMux(store)),
+		Handler: logging.Middleware(logging.Component("api.http"), metrics.Middleware(mux)),
 	}
 
 	go func() {
@@ -97,11 +100,12 @@ func run() error {
 	return server.Shutdown(shutdownCtx)
 }
 
-func newMux(store apiStore) *http.ServeMux {
+func newMux(store apiStore, metrics *internalapi.HTTPMetrics) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("/api/v1/gpus", internalapi.NewGPUListHandler(store))
 	mux.Handle("/api/v1/gpus/", internalapi.NewGPUTelemetryHandler(store))
 	mux.Handle("/telemetry", internalapi.NewMetricsHandler(store))
+	mux.Handle("/metrics", metrics)
 	mux.Handle("/openapi.json", internalapi.NewOpenAPIHandler())
 	mux.Handle("/swagger.json", internalapi.NewOpenAPIHandler())
 	mux.Handle("/swagger", internalapi.NewSwaggerUIHandler("/openapi.json"))
