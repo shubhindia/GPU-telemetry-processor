@@ -3,7 +3,7 @@
 {{- end }}
 
 {{- define "queue.fullname" -}}
-{{- printf "%s-%s" .Release.Name (include "queue.name" .) | trunc 63 | trimSuffix "-" -}}
+  {{- printf "%s-%s" .Release.Name (include "queue.name" .) | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{- define "queue.labels" -}}

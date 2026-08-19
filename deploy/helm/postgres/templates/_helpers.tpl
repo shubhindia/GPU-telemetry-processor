@@ -3,7 +3,7 @@
 {{- end }}
 
 {{- define "postgres.fullname" -}}
-{{- printf "%s-%s" .Release.Name (include "postgres.name" .) | trunc 63 | trimSuffix "-" -}}
+  {{- printf "%s-%s" .Release.Name (include "postgres.name" .) | trunc 63 | trimSuffix "-" -}}
 {{- end }}
 
 {{- define "postgres.labels" -}}

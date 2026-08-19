@@ -12,9 +12,9 @@ spec:
   template:
     metadata:
       annotations:
-        {{- with .Values.podAnnotations }}
+{{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+{{- end }}
       labels:
         {{- include "postgres.labels" . | nindent 8 }}
     spec:

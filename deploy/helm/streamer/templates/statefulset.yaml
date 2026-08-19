@@ -40,19 +40,19 @@ spec:
             - name: config
               mountPath: /etc/streamer
               readOnly: true
-            {{- if .Values.csv.existingClaim }}
+{{- if .Values.csv.existingClaim }}
             - name: csv
               mountPath: {{ .Values.csv.mountPath }}
               readOnly: true
-            {{- end }}
+{{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: config
           configMap:
             name: {{ include "streamer.fullname" . }}-config
-        {{- if .Values.csv.existingClaim }}
+{{- if .Values.csv.existingClaim }}
         - name: csv
           persistentVolumeClaim:
             claimName: {{ .Values.csv.existingClaim }}
-        {{- end }}
+{{- end }}
