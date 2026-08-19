@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,7 @@ type processorOptions struct {
 	topic       string
 	group       string
 	databaseURL string
+	metricsAddr string
 }
 
 func main() {
@@ -71,7 +73,30 @@ func run() error {
 		return err
 	}
 
-	runner := processor.NewRunner(client, store, options.topic, options.group)
+	metrics := &processor.Metrics{}
+	runner := processor.NewRunner(client, store, options.topic, options.group, metrics)
+
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", processor.NewMetricsHandler(metrics))
+	metricsServer := &http.Server{
+		Addr:              options.metricsAddr,
+		Handler:           metricsMux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		logger.Info("starting processor metrics server", "addr", options.metricsAddr)
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Warn("processor metrics server stopped", "addr", options.metricsAddr, "err", err)
+		}
+	}()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := metricsServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Warn("shutdown processor metrics server", "err", err)
+		}
+	}()
+
 	idleLogInterval := 30 * time.Second
 	nextIdleLog := time.Now().Add(idleLogInterval)
 
@@ -132,6 +157,7 @@ func resolveProcessorOptions(cfg config.Config) processorOptions {
 		topic:       "gpu",
 		group:       "processor",
 		databaseURL: cfg.Database.URL,
+		metricsAddr: ":9090",
 	}
 
 	if value := os.Getenv("PROCESSOR_QUEUE_URL"); value != "" {
@@ -145,6 +171,9 @@ func resolveProcessorOptions(cfg config.Config) processorOptions {
 	}
 	if value := os.Getenv("PROCESSOR_DATABASE_URL"); value != "" {
 		options.databaseURL = value
+	}
+	if value := os.Getenv("PROCESSOR_METRICS_ADDR"); value != "" {
+		options.metricsAddr = value
 	}
 
 	return options

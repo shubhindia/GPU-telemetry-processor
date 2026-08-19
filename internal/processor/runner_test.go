@@ -14,6 +14,7 @@ type runnerTestConsumer struct {
 	ok      bool
 	err     error
 	acked   []string
+	ackErr  error
 }
 
 func (c *runnerTestConsumer) Consume(
@@ -25,6 +26,10 @@ func (c *runnerTestConsumer) Consume(
 }
 
 func (c *runnerTestConsumer) Ack(_ context.Context, messageID string) error {
+	if c.ackErr != nil {
+		return c.ackErr
+	}
+
 	c.acked = append(c.acked, messageID)
 	return nil
 }
@@ -52,7 +57,8 @@ func TestRunnerRunOncePersistsAndAcknowledges(t *testing.T) {
 		},
 	}
 	store := &runnerTestStore{}
-	runner := NewRunner(consumer, store, "gpu", "processor")
+	metrics := &Metrics{}
+	runner := NewRunner(consumer, store, "gpu", "processor", metrics)
 
 	processed, err := runner.RunOnce(context.Background())
 	if err != nil {
@@ -67,6 +73,11 @@ func TestRunnerRunOncePersistsAndAcknowledges(t *testing.T) {
 	if len(consumer.acked) != 1 || consumer.acked[0] != "message-1" {
 		t.Fatalf("unexpected acked ids: %+v", consumer.acked)
 	}
+
+	snapshot := metrics.Snapshot()
+	if snapshot.Consumed != 1 || snapshot.Processed != 1 || snapshot.Errors != 0 {
+		t.Fatalf("unexpected metrics snapshot: %+v", snapshot)
+	}
 }
 
 func TestRunnerRunOnceDoesNotAckOnStoreError(t *testing.T) {
@@ -78,7 +89,8 @@ func TestRunnerRunOnceDoesNotAckOnStoreError(t *testing.T) {
 		},
 	}
 	store := &runnerTestStore{err: errors.New("write failed")}
-	runner := NewRunner(consumer, store, "gpu", "processor")
+	metrics := &Metrics{}
+	runner := NewRunner(consumer, store, "gpu", "processor", metrics)
 
 	processed, err := runner.RunOnce(context.Background())
 	if err == nil {
@@ -89,5 +101,37 @@ func TestRunnerRunOnceDoesNotAckOnStoreError(t *testing.T) {
 	}
 	if len(consumer.acked) != 0 {
 		t.Fatalf("expected no acks, got %+v", consumer.acked)
+	}
+
+	snapshot := metrics.Snapshot()
+	if snapshot.Consumed != 1 || snapshot.Processed != 0 || snapshot.Errors != 1 {
+		t.Fatalf("unexpected metrics snapshot: %+v", snapshot)
+	}
+}
+
+func TestRunnerRunOnceRecordsErrorOnAckFailure(t *testing.T) {
+	consumer := &runnerTestConsumer{
+		ok:     true,
+		ackErr: errors.New("ack failed"),
+		message: queue.Message{
+			ID:      "message-1",
+			Payload: []byte(`{"timestamp":"2026-08-18T08:00:00Z","metric_name":"gpu_util","value":"42"}`),
+		},
+	}
+	store := &runnerTestStore{}
+	metrics := &Metrics{}
+	runner := NewRunner(consumer, store, "gpu", "processor", metrics)
+
+	processed, err := runner.RunOnce(context.Background())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if processed {
+		t.Fatal("expected no successful processing")
+	}
+
+	snapshot := metrics.Snapshot()
+	if snapshot.Consumed != 1 || snapshot.Processed != 0 || snapshot.Errors != 1 {
+		t.Fatalf("unexpected metrics snapshot: %+v", snapshot)
 	}
 }

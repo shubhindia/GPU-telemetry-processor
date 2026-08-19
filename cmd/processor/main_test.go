@@ -18,6 +18,7 @@ func TestResolveProcessorOptionsDefaults(t *testing.T) {
 	t.Setenv("PROCESSOR_TOPIC", "")
 	t.Setenv("PROCESSOR_GROUP", "")
 	t.Setenv("PROCESSOR_DATABASE_URL", "")
+	t.Setenv("PROCESSOR_METRICS_ADDR", "")
 
 	options := resolveProcessorOptions(config.Config{
 		API:      config.APIConfig{Port: 8080},
@@ -33,6 +34,9 @@ func TestResolveProcessorOptionsDefaults(t *testing.T) {
 	if options.databaseURL != "postgres://db" {
 		t.Fatalf("databaseURL = %q", options.databaseURL)
 	}
+	if options.metricsAddr != ":9090" {
+		t.Fatalf("metricsAddr = %q", options.metricsAddr)
+	}
 }
 
 func TestResolveProcessorOptionsOverrides(t *testing.T) {
@@ -40,9 +44,10 @@ func TestResolveProcessorOptionsOverrides(t *testing.T) {
 	t.Setenv("PROCESSOR_TOPIC", "custom")
 	t.Setenv("PROCESSOR_GROUP", "workers")
 	t.Setenv("PROCESSOR_DATABASE_URL", "postgres://override")
+	t.Setenv("PROCESSOR_METRICS_ADDR", ":9191")
 
 	options := resolveProcessorOptions(config.Config{})
-	if options.queueURL != "http://queue:8080" || options.topic != "custom" || options.group != "workers" || options.databaseURL != "postgres://override" {
+	if options.queueURL != "http://queue:8080" || options.topic != "custom" || options.group != "workers" || options.databaseURL != "postgres://override" || options.metricsAddr != ":9191" {
 		t.Fatalf("unexpected options: %+v", options)
 	}
 }

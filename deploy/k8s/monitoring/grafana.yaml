@@ -154,6 +154,72 @@ data:
           ],
           "title": "Per-Pod Replication Activity",
           "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 28},
+          "id": 11,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(processor_messages_consumed_total)", "refId": "A"}],
+          "title": "Processor Consumed Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 28},
+          "id": 12,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(processor_messages_processed_total)", "refId": "A"}],
+          "title": "Processor Processed Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 10}]}}},
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 28},
+          "id": 13,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(processor_processing_errors_total)", "refId": "A"}],
+          "title": "Processor Error Total",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 0.001}, {"color": "red", "value": 0.01}]}, "unit": "ops"}},
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 28},
+          "id": 14,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
+          "targets": [{"expr": "sum(rate(processor_processing_errors_total[5m]))", "refId": "A"}],
+          "title": "Processor Errors/s",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+          "id": 15,
+          "targets": [
+            {"expr": "sum(rate(processor_messages_consumed_total[1m]))", "legendFormat": "consumed", "refId": "A"},
+            {"expr": "sum(rate(processor_messages_processed_total[1m]))", "legendFormat": "processed", "refId": "B"},
+            {"expr": "sum(rate(processor_processing_errors_total[5m]))", "legendFormat": "errors", "refId": "C"}
+          ],
+          "title": "Cluster Processor Throughput",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+          "id": 16,
+          "targets": [
+            {"expr": "rate(processor_messages_consumed_total[1m])", "legendFormat": "{{instance}} consumed/s", "refId": "A"},
+            {"expr": "rate(processor_messages_processed_total[1m])", "legendFormat": "{{instance}} processed/s", "refId": "B"},
+            {"expr": "rate(processor_processing_errors_total[5m])", "legendFormat": "{{instance}} errors/s", "refId": "C"}
+          ],
+          "title": "Per-Pod Processor Throughput",
+          "type": "timeseries"
         }
       ],
       "refresh": "10s",

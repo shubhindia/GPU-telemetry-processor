@@ -12,9 +12,9 @@ spec:
   template:
     metadata:
       annotations:
-        {{- with .Values.podAnnotations }}
+{{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+{{- end }}
       labels:
         app: gpu-telemetry-processor
         {{- include "processor.labels" . | nindent 8 }}
@@ -23,6 +23,9 @@ spec:
         - name: processor
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: 9090
           env:
             - name: PROCESSOR_CONFIG
               value: /etc/processor/config.yaml
@@ -32,6 +35,8 @@ spec:
               value: {{ .Values.queue.topic | quote }}
             - name: PROCESSOR_GROUP
               value: {{ .Values.queue.group | quote }}
+            - name: PROCESSOR_METRICS_ADDR
+              value: ":9090"
           volumeMounts:
             - name: config
               mountPath: /etc/processor

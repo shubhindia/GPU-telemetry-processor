@@ -19,6 +19,7 @@ type Runner struct {
 	store    Store
 	topic    string
 	group    string
+	metrics  *Metrics
 	logger   *slog.Logger
 }
 
@@ -27,12 +28,14 @@ func NewRunner(
 	store Store,
 	topic string,
 	group string,
+	metrics *Metrics,
 ) *Runner {
 	return &Runner{
 		consumer: consumer,
 		store:    store,
 		topic:    topic,
 		group:    group,
+		metrics:  metrics,
 		logger:   logging.Component("processor.runner"),
 	}
 }
@@ -40,12 +43,14 @@ func NewRunner(
 func (r *Runner) RunOnce(ctx context.Context) (bool, error) {
 	message, ok, err := r.consumer.Consume(ctx, r.topic, r.group)
 	if err != nil {
+		r.metrics.RecordError()
 		r.logger.Warn("consume message", "topic", r.topic, "group", r.group, "err", err)
 		return false, err
 	}
 	if !ok {
 		return false, nil
 	}
+	r.metrics.RecordConsumed()
 
 	r.logger.Debug(
 		"consumed message",
@@ -57,11 +62,13 @@ func (r *Runner) RunOnce(ctx context.Context) (bool, error) {
 
 	var record telemetry.Record
 	if err := json.Unmarshal(message.Payload, &record); err != nil {
+		r.metrics.RecordError()
 		r.logger.Warn("decode message payload", "message_id", message.ID, "err", err)
 		return false, fmt.Errorf("decode telemetry payload: %w", err)
 	}
 
 	if err := r.store.Insert(ctx, record); err != nil {
+		r.metrics.RecordError()
 		r.logger.Warn(
 			"persist telemetry",
 			"message_id", message.ID,
@@ -80,9 +87,11 @@ func (r *Runner) RunOnce(ctx context.Context) (bool, error) {
 	)
 
 	if err := r.consumer.Ack(ctx, message.ID); err != nil {
+		r.metrics.RecordError()
 		r.logger.Warn("ack message", "message_id", message.ID, "err", err)
 		return false, err
 	}
+	r.metrics.RecordProcessed()
 
 	r.logger.Info(
 		"processed telemetry",
